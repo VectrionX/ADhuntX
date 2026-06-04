@@ -217,6 +217,7 @@ const App: React.FC = () => {
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="max-w-4xl w-full animate-in fade-in duration-700 flex-1 flex flex-col justify-center items-center z-10">
+<<<<<<< HEAD
             <div className="text-center mb-12">
                 <div className="inline-flex items-center justify-center p-5 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-2xl mb-6 shadow-blue-500/30">
                     <Radar size={56} className="text-white" />
@@ -225,6 +226,27 @@ const App: React.FC = () => {
                 <p className="text-lg text-slate-400 font-light max-w-lg mx-auto">The offline-first Active Directory security analytics platform.</p>
             </div>
 
+=======
+            {/* Announcement Banner */}
+            <div className="mb-8 w-full max-w-2xl bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 text-center backdrop-blur-sm shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                     <Shield size={18} className="text-blue-400" />
+                     <h3 className="font-bold text-blue-400 tracking-wider uppercase text-sm">Initial Release Guarantee</h3>
+                </div>
+                <p className="text-slate-300 text-sm leading-relaxed">
+                    Welcome to the initial version of ADhuntX. <strong className="text-white">No data is ever saved, stored, or transmitted.</strong> All analysis is fully loaded into your browser's RAM, and all data is permanently destroyed immediately after closing the session.
+                </p>
+            </div>
+
+            <div className="text-center mb-12">
+                <div className="inline-flex items-center justify-center p-5 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-2xl mb-6 shadow-blue-500/30">
+                    <Radar size={56} className="text-white" />
+                </div>
+                <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">ADhuntX <span className="text-blue-500">Pro</span></h1>
+                <p className="text-lg text-slate-400 font-light max-w-lg mx-auto">The offline-first Active Directory security analytics platform.</p>
+            </div>
+
+>>>>>>> e09ee21 (Home Page Update)
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
                 {/* Upload Card */}
                 <div className="bg-[#15171E] rounded-3xl p-1 border border-[#2A2F3A] shadow-2xl">

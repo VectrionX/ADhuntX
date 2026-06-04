@@ -1,5 +1,6 @@
 {
   "name": "ADhuntX",
   "description": "A fully integrated, offline Active Directory Security Dashboard for analyzing privilege risks and password hygiene.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }

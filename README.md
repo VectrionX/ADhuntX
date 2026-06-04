@@ -2,9 +2,6 @@
 
 **ADhuntX** is a fully integrated Active Directory Security Dashboard that combines **Privilege Risk Analysis** and **Password Hygiene Monitoring** into a single, offline system. It empowers internal IT, Cybersecurity and Audit teams to visualize user account risks based on group memberships, privilege escalation paths, and authentication security posture 100% offline.
 
-![FootprintX Hero Screenshot](https://github.com/SuperMag99/ADhuntX/blob/main/screenshots/1.png)
-![FootprintX Hero Screenshot](https://github.com/SuperMag99/ADhuntX/blob/main/screenshots/2.png)
-
 ## 🚀 Features
 
 - **100% Offline Operation:** Runs entirely on the user's machine (localhost). No API calls, internet connection, or external services required.
@@ -22,7 +19,7 @@
 - **Modern Browser**: Chrome, Firefox, or Edge.
 
 ### 2. Setup
-```Open CMD
+```bash
 # Clone the repository
 git clone https://github.com/SuperMag99/ADhuntX.git
 
@@ -66,6 +63,7 @@ Features and detection logic evolve as threat landscapes change.
 ## ⭐ Support the Project
 If this project helps your team, consider giving it a ⭐.
 
+<<<<<<< HEAD
 ## License Summary
 
 This project is licensed under a **Non-Commercial Attribution License**. Key points:
@@ -79,6 +77,15 @@ This project is licensed under a **Non-Commercial Attribution License**. Key poi
 For full license details, see the `LICENSE` file. [LICENSE](./LICENSE).
 
 ---
+=======
+---
+Maintained by security professionals, for security professionals.
+
+## 📄 License
+MIT License
+
+Copyright (c) 2025 ADhuntX
+>>>>>>> e09ee21 (Home Page Update)
 
 ## 👤 Maintainer
 - **🔗 GitHub:** [SuperMag99](https://github.com/SuperMag99)
