@@ -1,6 +1,6 @@
 # 🛡️ ADhuntX
 
-**ADhuntX** is a fully integrated Active Directory Security Dashboard that combines **Privilege Risk Analysis** and **Password Hygiene Monitoring** into a single, offline system. It empowers internal IT, Cybersecurity and Audit teams to visualize user account risks based on group memberships, privilege escalation paths, and authentication security posture 100% offline.
+**ADhuntX** is a fully integrated Active Directory Security Dashboard that combines **Privilege Risk Analysis** and **Password Hygiene Monitoring** into a single, offline system. It empowers internal IT and security teams to visualize user account risks based on group memberships, privilege escalation paths, and authentication security posture without sending data to external clouds.
 
 ## 🚀 Features
 
@@ -41,6 +41,7 @@ npm run dev
 
 ## 📦 Repository Hygiene
 
+- Sensitive files are excluded via `.gitignore`.
 - Sample data provided is fictitious.
 - No real AD dumps are stored in this repository.
 
@@ -56,28 +57,14 @@ This project is provided "as is" without warranty. The authors are not responsib
 🚧 **Active Development**  
 Features and detection logic evolve as threat landscapes change.
 
-## 🧭 Security and Vulnerabilities
+## 🧭 Support
 
+- **Issues:** Use [GitHub Issues](https://github.com/SuperMag99/ADhuntX/issues).
 - **Security:** Refer to [SECURITY.md](./SECURITY.md).
 
 ## ⭐ Support the Project
-If this project helps your team, consider giving it a ⭐.
+If this project helps your SOC team, consider giving it a ⭐.
 
-<<<<<<< HEAD
-## License Summary
-
-This project is licensed under a **Non-Commercial Attribution License**. Key points:
-
-1. ✅ **Free to use for personal, educational, and research purposes.**
-2. ✅ **Any modification or derivative work must credit to the author.
-3. ❌ **Commercial use, sale, licensing, or any use intended to generate revenue is strictly prohibited without prior written permission.**
-4. ⚠️ **No warranty**: Use at your own risk.
-5. ⚖️ **Legal protection**: Unauthorized commercial use or failure to credit the author may result in legal action.
-
-For full license details, see the `LICENSE` file. [LICENSE](./LICENSE).
-
----
-=======
 ---
 Maintained by security professionals, for security professionals.
 
@@ -85,7 +72,6 @@ Maintained by security professionals, for security professionals.
 MIT License
 
 Copyright (c) 2025 ADhuntX
->>>>>>> e09ee21 (Home Page Update)
 
 ## 👤 Maintainer
 - **🔗 GitHub:** [SuperMag99](https://github.com/SuperMag99)
