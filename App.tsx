@@ -16,7 +16,7 @@ const Footer = () => (
         <a href="https://www.linkedin.com/in/mag99/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors flex items-center gap-1">
           <Linkedin size={14} /> LinkedIn
         </a>
-        <a href="https://github.com/VectrionX" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors flex items-center gap-1">
+        <a href="https://github.com/SuperMag99" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors flex items-center gap-1">
           <Github size={14} /> GitHub
         </a>
       </div>
@@ -119,7 +119,7 @@ const App: React.FC = () => {
           
           <div className="p-8 space-y-8">
             {/* Risk Score Summary */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
                 <div className={`p-6 rounded-2xl border ${selectedUser.risk.totalRiskScore > 70 ? 'bg-red-500/5 border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.1)]' : 'bg-[#15171E] border-[#2A2F3A]'}`}>
                     <p className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-2">Total Risk Score</p>
                     <div className="flex items-baseline gap-2">
@@ -273,7 +273,7 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            <div className="mt-12 flex items-center gap-8 text-sm text-slate-500">
+            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-slate-500">
                 <div className="flex items-center gap-2">
                     <Shield size={16} className="text-green-500"/> 100% Offline
                 </div>
@@ -343,11 +343,11 @@ const App: React.FC = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 lg:ml-72 p-6 lg:p-10 h-screen overflow-y-auto relative custom-scrollbar">
+        <main className="flex-1 lg:ml-72 p-4 sm:p-6 lg:p-10 h-screen overflow-y-auto relative custom-scrollbar pb-24 lg:pb-10">
             {/* Top Bar */}
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+            <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 lg:mb-10 gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight mb-1">
+                    <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight mb-1">
                         {currentTab === 'dashboard' && 'Security Overview'}
                         {currentTab === 'users' && 'User Risk Analysis'}
                         {currentTab === 'reports' && 'Export Reports'}
@@ -358,7 +358,7 @@ const App: React.FC = () => {
                     </p>
                 </div>
                 
-                <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-3 lg:gap-4 w-full lg:w-auto mt-4 lg:mt-0">
                     {/* Search Bar - Visual Only */}
                     <div className="hidden md:flex relative group">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
@@ -372,7 +372,7 @@ const App: React.FC = () => {
 
                     <button 
                         onClick={handleExport}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold shadow-lg shadow-blue-600/20 transition-all transform active:scale-95 text-sm ml-auto md:ml-0"
+                        className="flex items-center gap-2 px-4 lg:px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold shadow-lg shadow-blue-600/20 transition-all transform active:scale-95 text-sm ml-auto md:ml-0"
                     >
                         <Download size={16} /> 
                         <span className="hidden sm:inline">Export CSV</span>
@@ -381,13 +381,13 @@ const App: React.FC = () => {
             </header>
 
             {/* Content Area */}
-            <div className="space-y-8 pb-10">
+            <div className="space-y-6 lg:space-y-8 pb-10">
 
                 {/* DASHBOARD VIEW */}
                 {currentTab === 'dashboard' && (
-                    <div className="space-y-8 animate-in fade-in duration-500">
+                    <div className="space-y-6 lg:space-y-8 animate-in fade-in duration-500">
                         {/* KPI Stats */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                             <StatCard 
                                 label="Total Users" 
                                 value={metrics?.total || 0} 
@@ -587,6 +587,27 @@ const App: React.FC = () => {
                 )}
             </div>
         </main>
+
+        {/* Mobile Navigation */}
+        <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-[#0B0E11]/95 backdrop-blur-md border-t border-[#1F2937] z-30 pb-safe">
+            <div className="flex justify-around items-center p-2">
+                {[
+                    { id: 'dashboard', icon: LayoutDashboard, label: 'Dash' },
+                    { id: 'users', icon: Users, label: 'Users' },
+                    { id: 'reports', icon: FileText, label: 'Reports' },
+                    { id: 'documentation', icon: BookOpen, label: 'Docs' }
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setCurrentTab(tab.id as Tab)}
+                        className={`flex flex-col items-center gap-1 p-2 w-full transition-colors ${currentTab === tab.id ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        <tab.icon size={20} />
+                        <span className="text-[10px] font-medium">{tab.label}</span>
+                    </button>
+                ))}
+            </div>
+        </nav>
     </div>
   );
 };
