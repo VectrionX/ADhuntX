@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Shield, Users, Lock, AlertOctagon, FileText, Download, Activity, RefreshCw, ChevronRight, BarChart3, LayoutDashboard, X, User, BookOpen, Linkedin, Github, Radar, Search, Bell } from 'lucide-react';
-import { parseCSV, processUserData, generateSampleCSV, exportToCSV, downloadCSVTemplate } from './utils';
+import { MAX_CSV_FILE_BYTES, parseAndValidateCSV, processUserData, generateSampleCSV, exportToCSV, downloadCSVTemplate } from './utils';
 import { ADUserProcessed } from './types';
 import { Card, StatCard } from './components/ui/Card';
 import { RiskDistributionChart, IssuesBarChart, RiskMatrix } from './components/Charts';
@@ -42,31 +42,47 @@ const App: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setLoading(true);
     setError(null);
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setError('Select a .csv file. ADhuntX does not import spreadsheets or connect to Active Directory.');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > MAX_CSV_FILE_BYTES) {
+      setError('CSV file exceeds the 5 MB import limit.');
+      event.target.value = '';
+      return;
+    }
+
+    setLoading(true);
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const rawUsers = parseCSV(text);
-        if (rawUsers.length === 0) throw new Error("No valid users found in CSV.");
+        const rawUsers = parseAndValidateCSV(text);
         const processed = processUserData(rawUsers);
         setData(processed);
-        localStorage.setItem('adSentinelLastImport', JSON.stringify(processed.slice(0, 100))); // Persist sample
       } catch (err) {
-        setError("Failed to parse CSV. Ensure format is correct.");
+        setError(err instanceof Error ? err.message : 'Unable to import this CSV.');
         console.error(err);
       } finally {
         setLoading(false);
+        event.target.value = '';
       }
+    };
+    reader.onerror = () => {
+      setError('The selected file could not be read locally.');
+      setLoading(false);
+      event.target.value = '';
     };
     reader.readAsText(file);
   };
 
   const loadSample = () => {
       const text = generateSampleCSV();
-      const raw = parseCSV(text);
+      const raw = parseAndValidateCSV(text);
       setData(processUserData(raw));
+      setError(null);
   };
 
   const handleExport = () => {
@@ -89,15 +105,21 @@ const App: React.FC = () => {
       critical: data.filter(u => u.risk.riskLevel === 'Critical').length,
       high: data.filter(u => u.risk.riskLevel === 'High').length,
       avgScore: Math.round(data.reduce((acc, curr) => acc + curr.risk.totalRiskScore, 0) / data.length),
-      mfaRate: Math.round((data.filter(u => u.hasMFA).length / data.length) * 100)
+      mfaRate: (() => {
+        const knownMfa = data.filter(u => u.hasMFA !== null);
+        return knownMfa.length === 0 ? null : Math.round((knownMfa.filter(u => u.hasMFA === true).length / knownMfa.length) * 100);
+      })()
   } : null;
+
+  const statusLabel = (value: boolean | null, positive: string, negative: string) =>
+    value === true ? positive : value === false ? negative : 'UNKNOWN';
 
   // --- Modal Component (Inline) ---
   const UserDetailModal = () => {
     if (!selectedUser) return null;
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="user-detail-title">
         <div className="bg-[#0B0E11] border border-[#2A2F3A] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar relative overflow-hidden">
           {/* Top Gradient Line */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500"></div>
@@ -108,11 +130,11 @@ const App: React.FC = () => {
                     <User size={24} />
                 </div>
                 <div>
-                    <h2 className="text-xl font-bold text-white tracking-tight">{selectedUser.UserName}</h2>
+                    <h2 id="user-detail-title" className="text-xl font-bold text-white tracking-tight">{selectedUser.UserName}</h2>
                     <p className="text-slate-400 text-sm font-medium">{selectedUser.SamAccountName} • <span className="text-slate-500">{selectedUser.Department || 'No Dept'}</span></p>
                 </div>
             </div>
-            <button onClick={() => setSelectedUser(null)} className="p-2 rounded-lg hover:bg-[#1F2937] text-slate-400 hover:text-white transition-colors">
+            <button type="button" aria-label="Close user details" onClick={() => setSelectedUser(null)} className="p-2 rounded-lg hover:bg-[#1F2937] text-slate-400 hover:text-white transition-colors">
               <X size={20} />
             </button>
           </div>
@@ -132,11 +154,11 @@ const App: React.FC = () => {
                     <div className="space-y-3">
                         <div className="flex justify-between text-sm items-center">
                             <span className="text-slate-400">Enabled</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedUser.isEnabled ? "bg-green-500/10 text-green-400 border border-green-500/10" : "bg-slate-700 text-slate-300"}`}>{selectedUser.isEnabled ? 'ACTIVE' : 'DISABLED'}</span>
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedUser.isEnabled === true ? "bg-green-500/10 text-green-400 border border-green-500/10" : selectedUser.isEnabled === false ? "bg-slate-700 text-slate-300" : "bg-yellow-500/10 text-yellow-300 border border-yellow-500/10"}`}>{statusLabel(selectedUser.isEnabled, 'ACTIVE', 'DISABLED')}</span>
                         </div>
                          <div className="flex justify-between text-sm items-center">
                             <span className="text-slate-400">MFA Active</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedUser.hasMFA ? "bg-green-500/10 text-green-400 border border-green-500/10" : "bg-red-500/10 text-red-400 border border-red-500/10"}`}>{selectedUser.hasMFA ? 'ENABLED' : 'MISSING'}</span>
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedUser.hasMFA === true ? "bg-green-500/10 text-green-400 border border-green-500/10" : selectedUser.hasMFA === false ? "bg-red-500/10 text-red-400 border border-red-500/10" : "bg-yellow-500/10 text-yellow-300 border border-yellow-500/10"}`}>{statusLabel(selectedUser.hasMFA, 'ENABLED', 'NOT ENABLED')}</span>
                         </div>
                     </div>
                 </div>
@@ -172,7 +194,7 @@ const App: React.FC = () => {
             {/* Specific Issues */}
             <div>
                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <AlertOctagon size={14} className="text-red-500"/> Identified Risks
+                    <AlertOctagon size={14} className="text-red-500"/> Rules and supplied evidence
                 </h3>
                 <ul className="space-y-3">
                     {selectedUser.risk.issues.length > 0 ? selectedUser.risk.issues.map((issue, i) => (
@@ -182,7 +204,7 @@ const App: React.FC = () => {
                         </li>
                     )) : (
                         <li className="p-4 bg-green-500/5 border border-green-500/10 rounded-xl text-green-400 text-sm flex items-center gap-2 font-medium">
-                            <Shield size={16}/> No critical risks identified.
+                            <Shield size={16}/> No local rule matched the supplied values.
                         </li>
                     )}
                 </ul>
@@ -221,10 +243,10 @@ const App: React.FC = () => {
             <div className="mb-8 w-full max-w-2xl bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 text-center backdrop-blur-sm shadow-[0_0_15px_rgba(59,130,246,0.1)]">
                 <div className="flex items-center justify-center gap-2 mb-3">
                      <Shield size={18} className="text-blue-400" />
-                     <h3 className="font-bold text-blue-400 tracking-wider uppercase text-sm">Initial Release Guarantee</h3>
+                     <h3 className="font-bold text-blue-400 tracking-wider uppercase text-sm">Browser-local CSV triage</h3>
                 </div>
                 <p className="text-slate-300 text-sm leading-relaxed">
-                    Welcome to the initial version of ADhuntX. <strong className="text-white">No data is ever saved, stored, or transmitted.</strong> All analysis is fully loaded into your browser's RAM, and all data is permanently destroyed immediately after closing the session.
+                    <strong className="text-white">Imports stay in this browser tab and are not saved, uploaded, or sent to a connector.</strong> ADhuntX evaluates only supplied CSV values; it does not query Active Directory, build an AD graph, or analyze attack paths.
                 </p>
             </div>
 
@@ -232,8 +254,8 @@ const App: React.FC = () => {
                 <div className="inline-flex items-center justify-center p-5 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-2xl mb-6 shadow-blue-500/30">
                     <Radar size={56} className="text-white" />
                 </div>
-                <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">ADhuntX <span className="text-blue-500">Pro</span></h1>
-                <p className="text-lg text-slate-400 font-light max-w-lg mx-auto">The offline-first Active Directory security analytics platform.</p>
+                <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">ADhuntX <span className="text-blue-500">Local</span></h1>
+                <p className="text-lg text-slate-400 font-light max-w-lg mx-auto">Conservative, evidence-linked triage for a local CSV export.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
@@ -245,14 +267,15 @@ const App: React.FC = () => {
                         </div>
                         <h2 className="text-xl font-bold text-white mb-2">Initialize Dashboard</h2>
                         <p className="text-slate-500 mb-8 text-sm leading-relaxed">
-                            Upload your AD export CSV to begin local analysis.
+                            CSV only, up to 5 MB and 10,000 rows. Required headers are listed in the documentation panel.
                         </p>
                         
                         <label className="w-full cursor-pointer bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-4 px-6 rounded-xl shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-1 active:translate-y-0 text-center flex items-center justify-center gap-2">
-                            <span>Select Data File</span>
-                            <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+                            <span>{loading ? 'Reading CSV locally…' : 'Select CSV file'}</span>
+                            <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileUpload} disabled={loading} aria-describedby="csv-import-help" />
                         </label>
-                        {error && <p className="mt-4 text-red-400 text-xs font-medium bg-red-500/10 border border-red-500/10 py-2 px-4 rounded-lg">{error}</p>}
+                        <p id="csv-import-help" className="mt-3 text-slate-500 text-xs">No spreadsheet files, AD connectors, or background uploads are used.</p>
+                        {error && <p id="csv-import-error" role="alert" aria-live="assertive" className="mt-4 text-red-400 text-xs font-medium bg-red-500/10 border border-red-500/10 py-2 px-4 rounded-lg">{error}</p>}
                     </div>
                 </div>
 
@@ -275,10 +298,10 @@ const App: React.FC = () => {
 
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-slate-500">
                 <div className="flex items-center gap-2">
-                    <Shield size={16} className="text-green-500"/> 100% Offline
+                    <Shield size={16} className="text-green-500"/> Browser-local processing
                 </div>
                  <div className="flex items-center gap-2">
-                    <Lock size={16} className="text-blue-500"/> Zero-Trust Ready
+                    <Lock size={16} className="text-blue-500"/> No saved imports
                 </div>
             </div>
         </div>
@@ -412,12 +435,12 @@ const App: React.FC = () => {
                                 tooltipText="Average combined risk score"
                             />
                             <StatCard 
-                                label="MFA Adoption" 
-                                value={`${metrics?.mfaRate}%`} 
-                                color={metrics?.mfaRate && metrics.mfaRate < 80 ? "text-orange-500" : "text-green-500"}
-                                trend="Target: 100%"
+                                label="Known MFA Coverage"
+                                value={metrics?.mfaRate === null ? 'Unknown' : `${metrics?.mfaRate ?? 0}%`}
+                                color={metrics?.mfaRate !== null && metrics?.mfaRate !== undefined && metrics.mfaRate < 80 ? "text-orange-500" : "text-green-500"}
+                                trend="Excludes unknown values"
                                 icon={<Lock size={20}/>} 
-                                tooltipText="% of users with MFA enabled"
+                                tooltipText="Percentage of imported users with a known MFA status that are marked True"
                             />
                         </div>
 
@@ -439,8 +462,8 @@ const App: React.FC = () => {
                             <Card title="Priority Actions">
                                 <div className="space-y-4">
                                     {[
-                                        { title: "Dormant Privileged Accounts", count: data.filter(u=>u.isDormant && u.risk.privilegeScore > 0).length, icon: AlertOctagon, color: "red", filter: "dormant" },
-                                        { title: "Missing MFA", count: data.filter(u=>!u.hasMFA).length, icon: Lock, color: "orange", filter: "MFA" },
+                                        { title: "Dormant Direct-Privilege Flags", count: data.filter(u=>u.isDormant === true && u.risk.privilegeScore > 0).length, icon: AlertOctagon, color: "red", filter: "dormant" },
+                                        { title: "MFA Marked False", count: data.filter(u=>u.hasMFA === false).length, icon: Lock, color: "orange", filter: "MFA" },
                                         { title: "Password Never Expires", count: data.filter(u=>u.passwordNeverExpires).length, icon: Shield, color: "blue", filter: "never expire" }
                                     ].map((item, idx) => (
                                         <div key={idx} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
@@ -504,7 +527,7 @@ const App: React.FC = () => {
                                 </div>
                                 <h3 className="text-2xl font-bold text-white mb-2">Export Security Findings</h3>
                                 <p className="text-slate-400 max-w-md mx-auto mb-10 text-sm leading-relaxed">
-                                    Generate a comprehensive CSV report containing user risk scores, detected vulnerabilities, and recommended remediation steps.
+                                    Download a CSV of local rule results, supplied evidence, and review suggestions. Every cell is quoted and formula-like cells are neutralized for spreadsheet safety.
                                 </p>
                                 <button 
                                     onClick={handleExport}
@@ -524,7 +547,7 @@ const App: React.FC = () => {
                         <Card title="System Overview" className="border-l-4 border-l-blue-500">
                             <div className="prose prose-invert max-w-none text-slate-300">
                                 <p className="text-lg font-light leading-relaxed">
-                                    <strong className="text-white">ADhuntX</strong> is an advanced, offline-first security analytics platform designed to audit Active Directory environments. It correlates privilege data with password hygiene metrics to produce a unified risk score.
+                                    <strong className="text-white">ADhuntX</strong> is a browser-local CSV triage tool. It applies deterministic rules only to the values supplied in one import and records the source value behind each result. It does not connect to Active Directory, resolve nested groups, construct an AD graph, or analyze attack paths.
                                 </p>
                             </div>
                         </Card>
@@ -533,8 +556,8 @@ const App: React.FC = () => {
                             <Card title="Risk Methodology">
                                 <div className="space-y-6">
                                     {[
-                                        { title: "Privilege Risk (60%)", formula: "Group Weight + Escalation Paths", color: "orange" },
-                                        { title: "Hygiene Risk (40%)", formula: "Password Age + MFA Status", color: "red" },
+                                        { title: "Direct group flags (60%)", formula: "Exact supplied privileged-group names only", color: "orange" },
+                                        { title: "Hygiene flags (40%)", formula: "Supplied expiry, inactivity, and MFA values only", color: "red" },
                                         { title: "Total Score", formula: "Weighted Average (0-100)", color: "blue" }
                                     ].map((metric, i) => (
                                         <div key={i} className="bg-[#1A1D26] p-4 rounded-xl border border-[#2A2F3A]">
@@ -570,7 +593,7 @@ const App: React.FC = () => {
                                     <div className="pt-4 border-t border-[#2A2F3A]">
                                         <h4 className="text-white font-semibold text-sm mb-2">CSV Template</h4>
                                         <p className="text-slate-400 text-xs mb-4">
-                                            If you cannot run PowerShell, download our template and fill it manually.
+                                            Required: UserName, SamAccountName, Enabled, LastLogonDate, MemberOf, PasswordExpiryDate, MFAStatus, PasswordNeverExpires. Optional: Role, Department, PasswordLastSet, DormantAccountFlag. Blank, invalid, or unknown boolean/date values remain <strong>Unknown</strong> and are not scored as failures.
                                         </p>
                                         <button 
                                             onClick={downloadCSVTemplate}

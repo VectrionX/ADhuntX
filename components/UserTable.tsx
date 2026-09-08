@@ -91,6 +91,7 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
             </div>
              <input
                 type="text"
+                aria-label="Search imported users"
                 placeholder="Search users..."
                 className="w-full pl-9 pr-4 py-2.5 bg-[#0B0E11] border border-[#2A2F3A] rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 focus:outline-none text-slate-200 placeholder-slate-600 text-sm transition-all"
                 value={filter}
@@ -101,8 +102,10 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
         <div className="flex gap-2 flex-wrap">
             {['All', 'Critical', 'High', 'Medium', 'Low'].map(lvl => (
                 <button
+                    type="button"
                     key={lvl}
                     onClick={() => setRiskFilter(lvl)}
+                    aria-pressed={riskFilter === lvl}
                     className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-all border ${
                         riskFilter === lvl 
                         ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' 
@@ -118,28 +121,29 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
       <div className="overflow-hidden rounded-xl border border-[#2A2F3A] shadow-2xl bg-[#15171E]">
         <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left text-sm text-slate-300">
+            <caption className="sr-only">Imported users and their local rule results</caption>
             <thead className="bg-[#1A1D26] text-[11px] uppercase text-slate-400 font-bold tracking-wider border-b border-[#2A2F3A]">
                 <tr>
-                <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('UserName')}>
-                    <div className="flex items-center gap-2">IDENTITY <ArrowUpDown size={12} /></div>
+                <th scope="col" className="px-6 py-4">
+                    <button type="button" aria-label="Sort by identity" onClick={() => handleSort('UserName')} className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">IDENTITY <ArrowUpDown size={12} /></button>
                 </th>
-                <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('Department')}>
-                    <div className="flex items-center gap-2">DEPT <ArrowUpDown size={12} /></div>
+                <th scope="col" className="px-6 py-4">
+                    <button type="button" aria-label="Sort by department" onClick={() => handleSort('Department')} className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">DEPT <ArrowUpDown size={12} /></button>
                 </th>
-                <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('totalRiskScore')}>
-                    <div className="flex items-center gap-2">
+                <th scope="col" className="px-6 py-4">
+                    <button type="button" aria-label="Sort by score" onClick={() => handleSort('totalRiskScore')} className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
                         RISK SCORE <ArrowUpDown size={12} />
                         <Tooltip text="Combined score of Privilege Risk (60%) and Password Hygiene (40%)" />
-                    </div>
+                    </button>
                 </th>
-                <th className="px-6 py-4">
+                <th scope="col" className="px-6 py-4">
                     <div className="flex items-center gap-2">
                         BREAKDOWN
                         <Tooltip text="Individual scores for Group Privileges and Password settings (0-100)" />
                     </div>
                 </th>
-                <th className="px-6 py-4">ISSUES</th>
-                <th className="px-6 py-4">ACTION</th>
+                <th scope="col" className="px-6 py-4">RULE RESULTS</th>
+                <th scope="col" className="px-6 py-4">ACTION</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-[#2A2F3A]">
@@ -156,7 +160,7 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
                         </div>
                     </div>
                     </td>
-                    <td className="px-6 py-4 text-slate-400">{user.Department || <span className="opacity-50">N/A</span>}</td>
+                    <td className="px-6 py-4 text-slate-400">{user.Department}</td>
                     <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                             <span className={`text-lg font-bold ${user.risk.totalRiskScore > 70 ? 'text-red-500' : user.risk.totalRiskScore > 40 ? 'text-orange-400' : 'text-slate-200'}`}>
@@ -208,6 +212,7 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
                     <td className="px-6 py-4">
                     {user.risk.recommendations.length > 0 ? (
                         <button 
+                                type="button"
                                 onClick={() => onUserClick(user)}
                                 className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white text-xs font-semibold border border-blue-500/20 transition-all flex items-center gap-1.5 shadow-[0_0_10px_rgba(59,130,246,0.1)] hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]"
                         >
@@ -220,13 +225,13 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
                 ))}
                 {paginatedUsers.length === 0 && (
                     <tr>
-                        <td colSpan={6} className="px-6 py-16 text-center text-slate-500">
+                        <td colSpan={6} className="px-6 py-16 text-center text-slate-500" role="status" aria-live="polite">
                             <div className="flex flex-col items-center justify-center">
                                 <div className="p-4 bg-[#1A1D26] rounded-full mb-3 border border-[#2A2F3A]">
                                     <Shield size={32} className="text-slate-600"/>
                                 </div>
-                                <p className="text-sm font-medium">No users found matching filters.</p>
-                                <button onClick={() => {setFilter(''); setRiskFilter('All')}} className="mt-2 text-blue-400 text-xs hover:text-blue-300 font-medium">Clear Search</button>
+                                <p className="text-sm font-medium">No imported users match the current filters.</p>
+                                <button type="button" onClick={() => {setFilter(''); setRiskFilter('All')}} className="mt-2 text-blue-400 text-xs hover:text-blue-300 font-medium">Clear all filters</button>
                             </div>
                         </td>
                     </tr>

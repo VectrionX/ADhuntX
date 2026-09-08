@@ -1,78 +1,70 @@
-# 🛡️ ADhuntX
+# ADhuntX Local CSV Triage
 
-**ADhuntX** is a fully integrated Active Directory Security Dashboard that combines **Privilege Risk Analysis** and **Password Hygiene Monitoring** into a single, offline system. It empowers internal IT and security teams to visualize user account risks based on group memberships, privilege escalation paths, and authentication security posture without sending data to external clouds.
+ADhuntX is a browser-local CSV review tool for supplied account values. It imports one CSV into the current browser tab, applies a small set of deterministic rules, and lets the user export the resulting review list.
 
-## 🚀 Features
+## Scope and limits
 
-- **100% Offline Operation:** Runs entirely on the user's machine (localhost). No API calls, internet connection, or external services required.
-- **Privilege Risk Analyzer:** Detects excessive privileges, shadow admins, and nested group escalation paths.
-- **Password Hygiene Dashboard:** Identifies weak/expired passwords, accounts with "Password Never Expires", and dormant users.
-- **Combined Risk Scoring:** Calculates a weighted "Total Risk Score" (0-100) per user, prioritizing remediation efforts.
-- **Visual Analytics:** Interactive heatmaps, risk matrices, and trend charts for executive reporting.
-- **Actionable Reporting:** filters high-risk accounts and exports detailed CSV reports for remediation.
+- Import processing, rule evaluation, and report creation run in the browser. ADhuntX does not upload imports, call an API, save an import to local storage, or use an Active Directory connector.
+- Closing or resetting the tab clears the import from application memory.
+- This is **not** an Active Directory graph tool. It does not query AD, resolve nested memberships, identify shadow administrators, infer permissions, or analyze attack paths.
+- Results are review flags, not findings of compromise. Each flag identifies its source field and supplied value.
+- Missing, invalid, and recognized unknown values (`Unknown`, `N/A`, `Not set`, blank) stay **Unknown**. They do not become `False` or generate a failure flag.
 
-## ▶️ Run Locally
+## Run locally
 
-### 1. Prerequisites
-- **Node.js**: Version 18.x or higher.
-- **npm**: Version 9.x or higher.
-- **Modern Browser**: Chrome, Firefox, or Edge.
+Requires Node.js 22+ and npm.
 
-### 2. Setup
 ```bash
-# Clone the repository
-git clone https://github.com/SuperMag99/ADhuntX.git
-
-# Navigate to the project directory
-cd ADhuntX
-
-# Install dependencies
 npm install
-
-# Start the application
 npm run dev
 ```
 
-## 🧪 Data Privacy & Usage
+Run checks:
 
-- **Local Processing:** All CSV parsing and logic execution happen within the browser's memory. No data is uploaded to any server.
-- **Input Data:** Requires CSV exports from Active Directory (via PowerShell or ADUC).
-- **Sanitization:** While the tool is offline, ensure you handle your AD exports according to your organization's data handling policies.
+```bash
+npm test
+npm run build
+```
 
-## 📦 Repository Hygiene
+## CSV import contract
 
-- Sensitive files are excluded via `.gitignore`.
-- Sample data provided is fictitious.
-- No real AD dumps are stored in this repository.
+Only `.csv` files are accepted. Imports are limited to **5 MB** and **10,000 non-empty rows**. The parser supports quoted commas, quoted newlines, and escaped quotes. It rejects malformed quoting, duplicate headers, missing required headers, inconsistent row widths, and empty datasets.
 
-## 🧠 Intellectual Property Notice
+Required headers (case-sensitive):
 
-All trademarks, platform names (e.g., Active Directory, Windows), and service names are the property of their respective owners. Their use is for identification and educational purposes only.
+```text
+UserName,SamAccountName,Enabled,LastLogonDate,MemberOf,PasswordExpiryDate,MFAStatus,PasswordNeverExpires
+```
 
-## 📄 Disclaimer
+Optional headers:
 
-This project is provided "as is" without warranty. The authors are not responsible for misuse or damages. Intended for defensive cybersecurity purposes only.
+```text
+Role,Department,PasswordLastSet,DormantAccountFlag
+```
 
-## 📌 Project Status
-🚧 **Active Development**  
-Features and detection logic evolve as threat landscapes change.
+Use ISO dates: `YYYY-MM-DD`. Boolean values are `True` or `False`; anything else is shown as `Unknown` and is not treated as a negative security condition. `MemberOf` may use semicolons (`;`) or pipes (`|`) between directly supplied groups. Commas should be quoted as normal CSV fields.
 
-## 🧭 Support
+## Local rules
 
-- **Issues:** Use [GitHub Issues](https://github.com/SuperMag99/ADhuntX/issues).
-- **Security:** Refer to [SECURITY.md](./SECURITY.md).
+The score is a prioritization aid: 60% direct-group flags and 40% hygiene flags. Scores and levels are deterministic for the supplied CSV and review date. No inference is made from missing values.
 
-## ⭐ Support the Project
-If this project helps your SOC team, consider giving it a ⭐.
+| Rule | Condition from CSV | Points |
+| --- | --- | ---: |
+| P1 | Exact direct `MemberOf` match for a named built-in privileged group | 40 privilege |
+| P2 | Supplied inactivity evidence plus P1 | 30 privilege |
+| H1 | Supplied `PasswordExpiryDate` is before the review date | 40 hygiene |
+| H2 | Supplied `PasswordNeverExpires` is `True` | 40 hygiene |
+| H3 | Supplied `DormantAccountFlag` is `True`, or a valid `LastLogonDate` is over 90 days old | 30 hygiene |
+| H4 | Supplied `MFAStatus` is `False` | 30 hygiene |
 
----
-Maintained by security professionals, for security professionals.
+P1 only recognizes these exact, case-insensitive group names: `Domain Admins`, `Enterprise Admins`, `Schema Admins`, `Administrators`, `Account Operators`, `Backup Operators`, `Server Operators`, and `Print Operators`. It does not match substrings or claim membership paths.
 
-## 📄 License
-MIT License
+## Export safety
 
-Copyright (c) 2025 ADhuntX
+Exports contain local rule results, source evidence, and recommendations. Every CSV cell is quoted, embedded quotes are escaped, and values beginning (after spaces or tabs) with `=`, `+`, `-`, or `@` are prefixed with an apostrophe. This reduces spreadsheet formula injection risk when the report is opened in spreadsheet software.
 
-## 👤 Maintainer
-- **🔗 GitHub:** [SuperMag99](https://github.com/SuperMag99)
-- **🔗 LinkedIn:** [mag99](https://www.linkedin.com/in/mag99/)
+Review exported data under your organization’s handling requirements.
+
+## License
+
+MIT License. See [LICENSE](./LICENSE).

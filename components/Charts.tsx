@@ -68,16 +68,16 @@ export const RiskDistributionChart: React.FC<ChartsProps> = ({ users }) => {
 };
 
 export const IssuesBarChart: React.FC<ChartsProps> = ({ users }) => {
-  const dormantCount = users.filter(u => u.isDormant).length;
-  const noMfaCount = users.filter(u => !u.hasMFA).length;
-  const passwordNeverExpiresCount = users.filter(u => u.passwordNeverExpires).length;
-  const highPrivCount = users.filter(u => u.risk.privilegeScore > 50).length;
+  const dormantCount = users.filter(u => u.isDormant === true).length;
+  const noMfaCount = users.filter(u => u.hasMFA === false).length;
+  const passwordNeverExpiresCount = users.filter(u => u.passwordNeverExpires === true).length;
+  const directPrivilegeCount = users.filter(u => u.risk.evidence.some(evidence => evidence.ruleId === 'P1')).length;
 
   const data = [
-    { name: 'No MFA', count: noMfaCount },
+    { name: 'MFA False', count: noMfaCount },
     { name: 'Dormant', count: dormantCount },
     { name: 'Pwd No Exp', count: passwordNeverExpiresCount },
-    { name: 'High Priv', count: highPrivCount },
+    { name: 'Direct Priv', count: directPrivilegeCount },
   ];
 
   return (
@@ -109,7 +109,7 @@ export const RiskMatrix: React.FC<ChartsProps> = ({ users }) => {
     ];
 
     users.forEach(u => {
-        const isHighPriv = u.risk.privilegeScore > 50;
+        const isHighPriv = u.risk.evidence.some(evidence => evidence.ruleId === 'P1');
         const isBadHyg = u.risk.passwordHygieneScore > 50; // "High Risk" in hygiene means BAD hygiene
 
         if (!isHighPriv && !isBadHyg) matrix[0].count++;

@@ -1,242 +1,377 @@
-import { ADUserRaw, ADUserProcessed, RiskProfile } from './types';
+import { ADUserRaw, ADUserProcessed, KnownBoolean, RiskEvidence, RiskProfile } from './types';
 
-// Constants for Risk Calculation
-const HIGH_PRIVILEGE_GROUPS = [
-  'Domain Admins',
-  'Enterprise Admins',
-  'Schema Admins',
-  'Administrators',
-  'Account Operators',
-  'Backup Operators',
-  'Server Operators',
-  'Print Operators'
-];
+export const MAX_CSV_FILE_BYTES = 5 * 1024 * 1024;
+export const MAX_CSV_ROWS = 10_000;
 
-const ONE_DAY_MS = 1000 * 60 * 60 * 24;
+export const REQUIRED_CSV_HEADERS = [
+  'UserName',
+  'SamAccountName',
+  'Enabled',
+  'LastLogonDate',
+  'MemberOf',
+  'PasswordExpiryDate',
+  'MFAStatus',
+  'PasswordNeverExpires',
+] as const;
 
-export const parseCSV = (content: string): ADUserRaw[] => {
-  const lines = content.split(/\r\n|\n/);
-  const headers = lines[0].split(',').map(h => h.trim());
-  
-  const users: ADUserRaw[] = [];
+export const OPTIONAL_CSV_HEADERS = [
+  'Role',
+  'Department',
+  'PasswordLastSet',
+  'DormantAccountFlag',
+] as const;
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
+const HIGH_PRIVILEGE_GROUPS = new Set([
+  'domain admins',
+  'enterprise admins',
+  'schema admins',
+  'administrators',
+  'account operators',
+  'backup operators',
+  'server operators',
+  'print operators',
+]);
 
-    // Handle CSV quoting for fields like "Group, Name"
-    const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-    // Simple split fallback if regex fails or simple CSV
-    const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); 
+const UNKNOWN_VALUES = new Set(['', 'unknown', 'n/a', 'na', 'null', 'not set', 'not available']);
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-    if (values.length >= 5) { // Basic validation
-      const user: any = {};
-      headers.forEach((header, index) => {
-        let val = values[index] ? values[index].trim() : '';
-        // Remove quotes if present
-        if (val.startsWith('"') && val.endsWith('"')) {
-          val = val.slice(1, -1);
+export class CSVValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CSVValidationError';
+  }
+}
+
+export interface CSVImportOptions {
+  maxBytes?: number;
+  maxRows?: number;
+}
+
+const normalizeText = (value: string | undefined): string => value?.trim() ?? '';
+
+export const displayValue = (value: string | undefined | null): string => {
+  const normalized = normalizeText(value ?? '');
+  return UNKNOWN_VALUES.has(normalized.toLowerCase()) ? 'Unknown' : normalized;
+};
+
+const parseBoolean = (value: string | undefined): KnownBoolean => {
+  const normalized = normalizeText(value).toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  return null;
+};
+
+const parseDateOnly = (value: string | undefined): Date | null => {
+  const normalized = normalizeText(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return null;
+  const [year, month, day] = normalized.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day
+    ? parsed
+    : null;
+};
+
+const parseRFC4180 = (content: string, maxRows: number): string[][] => {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let inQuotes = false;
+  let closedQuote = false;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index];
+    if (inQuotes) {
+      if (character === '"') {
+        if (content[index + 1] === '"') {
+          field += '"';
+          index += 1;
+        } else {
+          inQuotes = false;
+          closedQuote = true;
         }
-        user[header] = val;
-      });
-      users.push(user as ADUserRaw);
+      } else {
+        field += character;
+      }
+      continue;
+    }
+
+    if (closedQuote) {
+      if (character === ',') {
+        row.push(field);
+        field = '';
+        closedQuote = false;
+      } else if (character === '\n') {
+        row.push(field);
+        rows.push(row);
+        if (rows.length > maxRows + 1) throw new CSVValidationError(`CSV exceeds the ${maxRows.toLocaleString()} row import limit.`);
+        row = [];
+        field = '';
+        closedQuote = false;
+      } else if (character !== '\r') {
+        throw new CSVValidationError('Invalid CSV: characters after a closing quote must be a comma or line break.');
+      }
+      continue;
+    }
+
+    if (character === '"') {
+      if (field.length !== 0) throw new CSVValidationError('Invalid CSV: a quote must begin a field.');
+      inQuotes = true;
+    } else if (character === ',') {
+      row.push(field);
+      field = '';
+    } else if (character === '\n') {
+      row.push(field);
+      rows.push(row);
+      if (rows.length > maxRows + 1) throw new CSVValidationError(`CSV exceeds the ${maxRows.toLocaleString()} row import limit.`);
+      row = [];
+      field = '';
+    } else if (character !== '\r') {
+      field += character;
     }
   }
+
+  if (inQuotes) throw new CSVValidationError('Invalid CSV: an opening quote is not closed.');
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+    if (rows.length > maxRows + 1) throw new CSVValidationError(`CSV exceeds the ${maxRows.toLocaleString()} row import limit.`);
+  }
+  return rows;
+};
+
+export const parseAndValidateCSV = (content: string, options: CSVImportOptions = {}): ADUserRaw[] => {
+  const maxBytes = options.maxBytes ?? MAX_CSV_FILE_BYTES;
+  const maxRows = options.maxRows ?? MAX_CSV_ROWS;
+  if (new TextEncoder().encode(content).byteLength > maxBytes) {
+    throw new CSVValidationError('CSV file exceeds the 5 MB import limit.');
+  }
+
+  if (!Number.isInteger(maxRows) || maxRows < 1) throw new CSVValidationError('CSV row limit must be a positive integer.');
+  const rows = parseRFC4180(content, maxRows);
+  if (rows.length === 0 || rows[0].every((cell) => normalizeText(cell) === '')) {
+    throw new CSVValidationError('CSV is empty or has no header row.');
+  }
+
+  const headers = rows[0].map((header, index) => normalizeText(index === 0 ? header.replace(/^\uFEFF/, '') : header));
+  const duplicates = headers.filter((header, index) => headers.indexOf(header) !== index);
+  if (duplicates.length > 0) throw new CSVValidationError(`CSV has duplicate header "${duplicates[0]}".`);
+
+  const missingHeaders = REQUIRED_CSV_HEADERS.filter((header) => !headers.includes(header));
+  if (missingHeaders.length > 0) {
+    throw new CSVValidationError(`CSV is missing required header(s): ${missingHeaders.join(', ')}.`);
+  }
+
+  const users: ADUserRaw[] = [];
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    const values = rows[rowIndex];
+    if (values.every((cell) => normalizeText(cell) === '')) continue;
+    if (values.length !== headers.length) {
+      throw new CSVValidationError(`CSV row ${rowIndex + 1} has ${values.length} columns; expected ${headers.length}.`);
+    }
+    if (users.length >= maxRows) {
+      throw new CSVValidationError(`CSV exceeds the ${maxRows.toLocaleString()} row import limit.`);
+    }
+
+    const record = Object.fromEntries(headers.map((header, index) => [header, normalizeText(values[index])]));
+    users.push({
+      UserName: record.UserName ?? '',
+      SamAccountName: record.SamAccountName ?? '',
+      Enabled: record.Enabled ?? '',
+      LastLogonDate: record.LastLogonDate ?? '',
+      MemberOf: record.MemberOf ?? '',
+      Role: record.Role,
+      Department: record.Department,
+      PasswordLastSet: record.PasswordLastSet,
+      PasswordExpiryDate: record.PasswordExpiryDate ?? '',
+      MFAStatus: record.MFAStatus ?? '',
+      PasswordNeverExpires: record.PasswordNeverExpires ?? '',
+      DormantAccountFlag: record.DormantAccountFlag,
+    });
+  }
+
+  if (users.length === 0) throw new CSVValidationError('CSV has no non-empty data rows.');
   return users;
 };
 
-const calculateDaysSince = (dateString: string): number => {
-  if (!dateString) return 9999;
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return 9999;
-  const diff = Date.now() - date.getTime();
-  return Math.floor(diff / ONE_DAY_MS);
+// Backwards-compatible alias for callers outside the UI. New imports must use parseAndValidateCSV.
+export const parseCSV = (content: string): ADUserRaw[] => parseAndValidateCSV(content);
+
+const daysBetween = (date: Date, referenceDate: Date): number =>
+  Math.floor((Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), referenceDate.getUTCDate()) - date.getTime()) / ONE_DAY_MS);
+
+const addEvidence = (
+  evidence: RiskEvidence[],
+  ruleId: string,
+  sourceField: keyof ADUserRaw,
+  sourceValue: string,
+  description: string,
+): void => {
+  evidence.push({ ruleId, sourceField, sourceValue: displayValue(sourceValue), description });
 };
 
-const calculatePrivilegeRisk = (user: ADUserRaw, groups: string[], isDormant: boolean): { score: number, issues: string[] } => {
-  let score = 0;
-  const issues: string[] = [];
-  
-  // 1. High Privilege Groups
-  const highPrivCount = groups.filter(g => HIGH_PRIVILEGE_GROUPS.some(hp => g.toLowerCase().includes(hp.toLowerCase()))).length;
-  
-  if (highPrivCount > 0) {
-    score += 40;
-    issues.push(`Member of ${highPrivCount} high-privilege group(s)`);
+const groupList = (memberOf: string): string[] =>
+  normalizeText(memberOf)
+    .split(/[;|]/)
+    .map((group) => group.trim())
+    .filter(Boolean);
+
+export const processUserData = (rawUsers: ADUserRaw[], referenceDate = new Date()): ADUserProcessed[] => rawUsers.map((user, index) => {
+  const groups = groupList(user.MemberOf);
+  const isEnabled = parseBoolean(user.Enabled);
+  const hasMFA = parseBoolean(user.MFAStatus);
+  const passwordNeverExpires = parseBoolean(user.PasswordNeverExpires);
+  const lastLogon = parseDateOnly(user.LastLogonDate);
+  const passwordExpiry = parseDateOnly(user.PasswordExpiryDate);
+  const explicitDormant = parseBoolean(user.DormantAccountFlag);
+  const daysSinceLogin = lastLogon ? daysBetween(lastLogon, referenceDate) : null;
+  const isDormant: KnownBoolean = explicitDormant === true
+    ? true
+    : explicitDormant === false && daysSinceLogin === null
+      ? false
+      : daysSinceLogin === null
+        ? null
+        : daysSinceLogin > 90;
+  const passwordExpired: KnownBoolean = passwordNeverExpires === true
+    ? false
+    : passwordExpiry === null
+      ? null
+      : daysBetween(passwordExpiry, referenceDate) > 0;
+
+  const privilegeEvidence: RiskEvidence[] = [];
+  const hygieneEvidence: RiskEvidence[] = [];
+  const privilegedGroups = groups.filter((group) => HIGH_PRIVILEGE_GROUPS.has(group.toLowerCase()));
+  let privilegeScore = 0;
+  let passwordHygieneScore = 0;
+
+  if (privilegedGroups.length > 0) {
+    privilegeScore += 40;
+    addEvidence(
+      privilegeEvidence,
+      'P1',
+      'MemberOf',
+      privilegedGroups.join('; '),
+      `Rule P1: Direct membership in supplied group "${privilegedGroups.join('; ')}".`,
+    );
+  }
+  if (isDormant === true && privilegedGroups.length > 0) {
+    privilegeScore += 30;
+    addEvidence(
+      privilegeEvidence,
+      'P2',
+      'LastLogonDate',
+      user.LastLogonDate || user.DormantAccountFlag || '',
+      'Rule P2: Supplied account inactivity evidence with direct privileged-group membership.',
+    );
+  }
+  if (passwordExpired === true) {
+    passwordHygieneScore += 40;
+    addEvidence(hygieneEvidence, 'H1', 'PasswordExpiryDate', user.PasswordExpiryDate, 'Rule H1: Supplied password expiry date is before the review date.');
+  }
+  if (passwordNeverExpires === true) {
+    passwordHygieneScore += 40;
+    addEvidence(hygieneEvidence, 'H2', 'PasswordNeverExpires', user.PasswordNeverExpires, 'Rule H2: Supplied PasswordNeverExpires value is True.');
+  }
+  if (isDormant === true) {
+    passwordHygieneScore += 30;
+    addEvidence(hygieneEvidence, 'H3', explicitDormant === true ? 'DormantAccountFlag' : 'LastLogonDate', explicitDormant === true ? user.DormantAccountFlag ?? '' : user.LastLogonDate, 'Rule H3: Supplied inactivity evidence indicates a dormant account.');
+  }
+  if (hasMFA === false) {
+    passwordHygieneScore += 30;
+    addEvidence(hygieneEvidence, 'H4', 'MFAStatus', user.MFAStatus, 'Rule H4: Supplied MFAStatus value is False.');
   }
 
-  // 2. Privilege Chains (Heuristic: Many groups or Specific sensitive keywords like 'Shadow', 'Owner')
-  const potentialEscalation = groups.length > 15 || groups.some(g => g.toLowerCase().includes('owner') || g.toLowerCase().includes('write'));
-  if (potentialEscalation) {
-    score += 30;
-    issues.push('Potential Privilege Escalation Path (High group count or sensitive keywords)');
-  }
+  privilegeScore = Math.min(100, privilegeScore);
+  passwordHygieneScore = Math.min(100, passwordHygieneScore);
+  const totalRiskScore = Math.round((privilegeScore * 0.6) + (passwordHygieneScore * 0.4));
+  const riskLevel: RiskProfile['riskLevel'] = totalRiskScore >= 70 ? 'Critical'
+    : totalRiskScore >= 50 ? 'High'
+      : totalRiskScore >= 30 ? 'Medium'
+        : 'Low';
+  const evidence = [...privilegeEvidence, ...hygieneEvidence];
+  const issues = evidence.map((item) => item.description);
+  const recommendations: string[] = [];
+  if (privilegedGroups.length > 0) recommendations.push('Review the supplied direct privileged-group memberships.');
+  if (hasMFA === false) recommendations.push('Verify and remediate the supplied MFA status.');
+  if (passwordNeverExpires === true) recommendations.push('Review the PasswordNeverExpires setting.');
+  if (isDormant === true) recommendations.push('Review whether the dormant account should remain enabled.');
+  if (passwordExpired === true) recommendations.push('Review the supplied password expiry date and reset process.');
 
-  // 3. Dormant but Privileged
-  if (isDormant && (highPrivCount > 0 || potentialEscalation)) {
-    score += 30;
-    issues.push('Dormant account with privileges');
-  }
+  return {
+    ...user,
+    UserName: displayValue(user.UserName),
+    SamAccountName: displayValue(user.SamAccountName),
+    Role: displayValue(user.Role),
+    Department: displayValue(user.Department),
+    PasswordLastSet: displayValue(user.PasswordLastSet),
+    LastLogonDate: displayValue(user.LastLogonDate),
+    PasswordExpiryDate: displayValue(user.PasswordExpiryDate),
+    id: `user-${index}`,
+    groups,
+    daysSinceLogin,
+    isDormant,
+    hasMFA,
+    passwordExpired,
+    passwordNeverExpires,
+    isEnabled,
+    risk: { privilegeScore, passwordHygieneScore, totalRiskScore, riskLevel, issues, recommendations, evidence },
+  };
+});
 
-  return { score: Math.min(100, score), issues };
+export const generateSampleCSV = (): string => `UserName,SamAccountName,Enabled,LastLogonDate,MemberOf,Role,Department,PasswordLastSet,PasswordExpiryDate,MFAStatus,PasswordNeverExpires,DormantAccountFlag
+Alex Example,aexample,True,2026-08-30,Users,User,IT,2026-08-01,2027-08-01,True,False,False
+Priya Admin,padmin,True,2026-01-01,Domain Admins,Admin,IT,2026-08-01,2027-08-01,False,False,False
+No Data,nodata,Unknown,,Users,,, , ,Unknown,Unknown,Unknown`;
+
+const csvCell = (value: string | number | boolean | null | undefined): string => {
+  let cell = value === null || value === undefined || value === '' ? 'Unknown' : String(value);
+  if (/^[\t\r ]*[=+\-@]/.test(cell)) cell = `'${cell}`;
+  return `"${cell.replace(/"/g, '""')}"`;
 };
 
-const calculatePasswordRisk = (
-  user: ADUserRaw, 
-  isDormant: boolean, 
-  hasMFA: boolean, 
-  passwordNeverExpires: boolean,
-  passwordExpired: boolean
-): { score: number, issues: string[] } => {
-  let score = 0;
-  const issues: string[] = [];
+const booleanForExport = (value: KnownBoolean): string => value === null ? 'Unknown' : String(value);
 
-  // 1. Expired or Weak
-  if (passwordExpired) {
-    score += 40;
-    issues.push('Password expired');
-  }
-  if (passwordNeverExpires) {
-    score += 40; // High risk
-    issues.push('Password set to never expire');
-  }
-
-  // 2. Dormant
-  if (isDormant) {
-    score += 30;
-    issues.push('Account is dormant');
-  }
-
-  // 3. Missing MFA
-  if (!hasMFA) {
-    score += 30;
-    issues.push('MFA not enabled');
-  }
-
-  return { score: Math.min(100, score), issues };
-};
-
-export const processUserData = (rawUsers: ADUserRaw[]): ADUserProcessed[] => {
-  return rawUsers.map((user, idx) => {
-    // Basic Parsing
-    const groups = user.MemberOf ? user.MemberOf.split(/;|\||,/).map(g => g.trim()) : [];
-    const isEnabled = user.Enabled?.toLowerCase() === 'true';
-    const daysSinceLogin = calculateDaysSince(user.LastLogonDate);
-    
-    // Explicit dormant flag or > 90 days inactive
-    const isDormant = (user.DormantAccountFlag?.toLowerCase() === 'true') || (daysSinceLogin > 90);
-    
-    const hasMFA = user.MFAStatus?.toLowerCase() === 'true';
-    const passwordNeverExpires = user.PasswordNeverExpires?.toLowerCase() === 'true';
-    
-    const daysUntilExpiry = calculateDaysSince(user.PasswordExpiryDate) * -1; // Negative if past
-    const passwordExpired = daysUntilExpiry < 0 && !passwordNeverExpires;
-
-    // Risk Calculations
-    const privRisk = calculatePrivilegeRisk(user, groups, isDormant);
-    const passRisk = calculatePasswordRisk(user, isDormant, hasMFA, passwordNeverExpires, passwordExpired);
-
-    // Total Score Weighted: Priv 0.6, Pass 0.4
-    const totalScore = Math.round((privRisk.score * 0.6) + (passRisk.score * 0.4));
-
-    let riskLevel: RiskProfile['riskLevel'] = 'Low';
-    if (totalScore >= 70) riskLevel = 'Critical';
-    else if (totalScore >= 50) riskLevel = 'High';
-    else if (totalScore >= 30) riskLevel = 'Medium';
-
-    const allIssues = [...privRisk.issues, ...passRisk.issues];
-    const recommendations: string[] = [];
-    
-    if (privRisk.score > 0) recommendations.push('Review group memberships');
-    if (!hasMFA) recommendations.push('Enforce MFA');
-    if (passwordNeverExpires) recommendations.push('Disable "Password Never Expires"');
-    if (isDormant) recommendations.push('Disable or remove dormant account');
-
-    return {
-      ...user,
-      id: `user-${idx}`,
-      groups,
-      daysSinceLogin,
-      isDormant,
-      hasMFA,
-      passwordExpired,
-      passwordNeverExpires,
-      isEnabled,
-      risk: {
-        privilegeScore: privRisk.score,
-        passwordHygieneScore: passRisk.score,
-        totalRiskScore: totalScore,
-        riskLevel,
-        issues: allIssues,
-        recommendations
-      }
-    };
-  });
-};
-
-export const generateSampleCSV = () => {
-  return `UserName,SamAccountName,Enabled,LastLogonDate,MemberOf,Role,Department,PasswordLastSet,PasswordExpiryDate,MFAStatus,PasswordNeverExpires,DormantAccountFlag
-John Doe,jdoe,True,2023-10-01,Domain Admins;Users,Admin,IT,2023-09-01,2024-09-01,True,False,False
-Jane Smith,jsmith,True,2023-05-15,Users,User,HR,2022-01-01,2022-04-01,False,True,False
-Bob Martin,bmartin,False,2022-12-01,Enterprise Admins,Admin,IT,2022-11-01,2023-02-01,False,False,True
-Alice Wonder,awonder,True,2023-10-25,Users;Marketing Team,Manager,Marketing,2023-08-15,2023-11-15,True,False,False
-Dave Grohl,dgrohl,True,2023-10-20,Administrators;Backup Operators,Admin,IT,2023-10-01,2024-01-01,False,False,False`;
-};
-
-export const downloadCSVTemplate = () => {
+export const buildCSVReport = (users: ADUserProcessed[]): string => {
   const headers = [
-    'UserName', 'SamAccountName', 'Enabled', 'LastLogonDate', 
-    'MemberOf', 'Role', 'Department', 'PasswordLastSet', 
-    'PasswordExpiryDate', 'MFAStatus', 'PasswordNeverExpires', 
-    'DormantAccountFlag'
+    'UserName', 'SamAccountName', 'Department', 'Enabled',
+    'RiskLevel', 'TotalRiskScore', 'PrivilegeScore', 'HygieneScore',
+    'Issues', 'Evidence', 'Recommendations', 'LastLogonDate', 'MFAStatus',
   ];
-  const csvContent = headers.join(',');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const rows = users.map((user) => [
+    user.UserName,
+    user.SamAccountName,
+    user.Department,
+    booleanForExport(user.isEnabled),
+    user.risk.riskLevel,
+    user.risk.totalRiskScore,
+    user.risk.privilegeScore,
+    user.risk.passwordHygieneScore,
+    user.risk.issues.join('; '),
+    user.risk.evidence.map((item) => `${item.ruleId}: ${item.sourceField}=${item.sourceValue}`).join('; '),
+    user.risk.recommendations.join('; '),
+    user.LastLogonDate,
+    booleanForExport(user.hasMFA),
+  ].map(csvCell).join(','));
+  return [headers.map(csvCell).join(','), ...rows].join('\r\n');
+};
+
+const downloadCSV = (content: string, fileName: string): void => {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', 'adhuntx_template.csv');
+  link.href = url;
+  link.download = fileName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
-export const exportToCSV = (users: ADUserProcessed[]) => {
-  if (!users.length) return;
-  
-  const headers = [
-    'UserName', 'SamAccountName', 'Department', 'Enabled', 
-    'RiskLevel', 'TotalRiskScore', 'PrivilegeScore', 'HygieneScore', 
-    'Issues', 'Recommendations', 'LastLogonDate', 'MFAEnabled'
-  ];
+export const downloadCSVTemplate = (): void => {
+  const headers = [...REQUIRED_CSV_HEADERS, ...OPTIONAL_CSV_HEADERS];
+  downloadCSV(headers.map(csvCell).join(','), 'adhuntx_template.csv');
+};
 
-  const csvContent = [
-    headers.join(','),
-    ...users.map(u => {
-      const row = [
-        `"${u.UserName}"`,
-        `"${u.SamAccountName}"`,
-        `"${u.Department || ''}"`,
-        u.Enabled,
-        u.risk.riskLevel,
-        u.risk.totalRiskScore,
-        u.risk.privilegeScore,
-        u.risk.passwordHygieneScore,
-        `"${u.risk.issues.join('; ')}"`,
-        `"${u.risk.recommendations.join('; ')}"`,
-        u.LastLogonDate,
-        u.hasMFA
-      ];
-      return row.join(',');
-    })
-  ].join('\n');
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `adhuntx_report_${new Date().toISOString().slice(0,10)}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+export const exportToCSV = (users: ADUserProcessed[]): void => {
+  if (users.length === 0) return;
+  downloadCSV(buildCSVReport(users), `adhuntx_report_${new Date().toISOString().slice(0, 10)}.csv`);
 };
