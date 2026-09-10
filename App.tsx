@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Upload, Shield, Users, Lock, AlertOctagon, FileText, Download, Activity, RefreshCw, ChevronRight, BarChart3, LayoutDashboard, X, User, BookOpen, Linkedin, Github, Radar, Search, Bell } from 'lucide-react';
 import { MAX_CSV_FILE_BYTES, parseAndValidateCSV, processUserData, generateSampleCSV, exportToCSV, downloadCSVTemplate } from './utils';
 import { ADUserProcessed } from './types';
+import { ACQUISITION_ROUTES } from './acquisitionRoutes';
 import { Card, StatCard } from './components/ui/Card';
 import { RiskDistributionChart, IssuesBarChart, RiskMatrix } from './components/Charts';
 import { UserTable } from './components/UserTable';
@@ -602,6 +603,25 @@ const App: React.FC = () => {
                                             <FileText size={16} />
                                             Download Template
                                         </button>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-[#2A2F3A] space-y-4">
+                                        <div>
+                                            <h4 className="text-white font-semibold text-sm">Other safe acquisition alternatives</h4>
+                                            <p className="text-slate-500 text-xs mt-1">Documentation only: ADhuntX never runs these reports, connects to a source, handles credentials, or imports anything except the local CSV you select.</p>
+                                        </div>
+                                        {ACQUISITION_ROUTES.filter(route => !route.recommended).map(route => (
+                                            <details key={route.id} className="rounded-xl border border-[#2A2F3A] bg-[#1A1D26] p-4">
+                                                <summary className="cursor-pointer text-sm font-semibold text-white">{route.name}</summary>
+                                                <dl className="mt-3 grid gap-2 text-xs text-slate-400">
+                                                    <div><dt className="font-bold text-slate-300">Authorization / ownership</dt><dd>{route.authorization} {route.ownership}</dd></div>
+                                                    <div><dt className="font-bold text-slate-300">Access level / source</dt><dd>{route.accessLevel} {route.source}</dd></div>
+                                                    <div><dt className="font-bold text-slate-300">Provenance / freshness</dt><dd>{route.provenance} {route.freshness}</dd></div>
+                                                    <div><dt className="font-bold text-slate-300">Required fields</dt><dd>{route.requiredFields}</dd></div>
+                                                    <div><dt className="font-bold text-slate-300">Limitations</dt><dd>{route.limitations}</dd></div>
+                                                </dl>
+                                            </details>
+                                        ))}
                                     </div>
                                 </div>
                             </Card>

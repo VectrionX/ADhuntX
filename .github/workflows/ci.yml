@@ -21,3 +21,32 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run high-production-audit
+
+  browser-smoke:
+    name: Sandboxed browser smoke
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Start production preview
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/vite-preview.log 2>&1 &
+          curl --fail --retry 20 --retry-delay 1 --retry-connrefused http://127.0.0.1:4173/
+      - name: Capture sandboxed browser screenshot
+        run: |
+          google-chrome --version
+          timeout 45s google-chrome --headless=new --disable-gpu --window-size=1440,900 \
+            --screenshot=browser-smoke.png http://127.0.0.1:4173/
+          test -s browser-smoke.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-smoke
+          path: browser-smoke.png
+          if-no-files-found: error

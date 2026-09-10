@@ -5,6 +5,7 @@ import {
   parseAndValidateCSV,
   processUserData,
 } from './utils';
+import { ACQUISITION_ROUTES } from './acquisitionRoutes';
 
 const headers = [
   'UserName',
@@ -117,5 +118,27 @@ describe('buildCSVReport', () => {
     expect(report).toContain('"\'=HYPERLINK(\"\"https://example.test\"\")"');
     expect(report).toContain('"x, y"');
     expect(report.split('\n')).toHaveLength(2);
+  });
+});
+
+describe('documented data acquisition routes', () => {
+  it('keeps the reviewed directory export recommended and documents safe provenance fields for every route', () => {
+    expect(ACQUISITION_ROUTES.find(route => route.recommended)?.id).toBe('directory-export');
+    expect(ACQUISITION_ROUTES.length).toBeGreaterThanOrEqual(6);
+    for (const route of ACQUISITION_ROUTES) {
+      expect(route.authorization).not.toHaveLength(0);
+      expect(route.ownership).not.toHaveLength(0);
+      expect(route.accessLevel).not.toHaveLength(0);
+      expect(route.source).not.toHaveLength(0);
+      expect(route.provenance).not.toHaveLength(0);
+      expect(route.freshness).not.toHaveLength(0);
+      expect(route.requiredFields).not.toHaveLength(0);
+      expect(route.limitations).not.toHaveLength(0);
+    }
+  });
+
+  it('does not document connectors, scraping, credential handling, or live directory access', () => {
+    const documentation = JSON.stringify(ACQUISITION_ROUTES).toLowerCase();
+    expect(documentation).not.toMatch(/scrap|credential|live directory|connector/);
   });
 });
