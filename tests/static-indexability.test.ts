@@ -20,6 +20,12 @@ describe('ADhuntX static indexability metadata', () => {
     expect(html).toContain('"url":"https://adhuntx.vectrionx.com/"');
   });
 
+  it('ships local styles without a runtime Tailwind CDN dependency', () => {
+    expect(html).not.toContain('cdn.tailwindcss.com');
+    expect(html).not.toContain('fonts.googleapis.com');
+    expect(readFileSync(resolve(root, 'index.tsx'), 'utf8')).toContain("import './styles.css';");
+  });
+
   it('provides an allowed-root sitemap', () => {
     expect(readFileSync(resolve(root, 'public/sitemap.xml'), 'utf8')).toContain('<loc>https://adhuntx.vectrionx.com/</loc>');
     expect(readFileSync(resolve(root, 'public/robots.txt'), 'utf8')).toContain('Allow: /');
