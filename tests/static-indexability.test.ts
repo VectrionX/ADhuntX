@@ -24,6 +24,9 @@ describe('ADhuntX static indexability metadata', () => {
     expect(html).not.toContain('cdn.tailwindcss.com');
     expect(html).not.toContain('fonts.googleapis.com');
     expect(readFileSync(resolve(root, 'index.tsx'), 'utf8')).toContain("import './styles.css';");
+    const viteConfig = readFileSync(resolve(root, 'vite.config.ts'), 'utf8');
+    expect(viteConfig).toContain("import tailwindcss from '@tailwindcss/vite';");
+    expect(viteConfig).toContain('plugins: [react(), tailwindcss()]');
   });
 
   it('provides an allowed-root sitemap', () => {
