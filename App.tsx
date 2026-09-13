@@ -1,11 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { Upload, Shield, Users, Lock, AlertOctagon, FileText, Download, Activity, RefreshCw, ChevronRight, BarChart3, LayoutDashboard, X, User, BookOpen, Linkedin, Github, Radar, Search, Bell } from 'lucide-react';
 import { MAX_CSV_FILE_BYTES, parseAndValidateCSV, processUserData, generateSampleCSV, exportToCSV, downloadCSVTemplate } from './utils';
 import { ADUserProcessed } from './types';
 import { ACQUISITION_ROUTES } from './acquisitionRoutes';
 import { Card, StatCard } from './components/ui/Card';
-import { RiskDistributionChart, IssuesBarChart, RiskMatrix } from './components/Charts';
+import { ChartErrorBoundary } from './components/ChartErrorBoundary';
 import { UserTable } from './components/UserTable';
+
+// Charts are only needed after a CSV/demo import. Keep Recharts out of the
+// public landing-route entry chunk while preserving the existing chart module.
+const RiskDistributionChart = lazy(() => import('./components/Charts').then(({ RiskDistributionChart }) => ({ default: RiskDistributionChart })));
+const IssuesBarChart = lazy(() => import('./components/Charts').then(({ IssuesBarChart }) => ({ default: IssuesBarChart })));
+const RiskMatrix = lazy(() => import('./components/Charts').then(({ RiskMatrix }) => ({ default: RiskMatrix })));
+
+const ChartsFallback = () => (
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" aria-live="polite" aria-label="Loading dashboard charts">
+    <div className="lg:col-span-1 min-h-[350px] rounded-2xl bg-[#15171E] border border-[#2A2F3A] animate-pulse" />
+    <div className="lg:col-span-2 min-h-[350px] rounded-2xl bg-[#15171E] border border-[#2A2F3A] animate-pulse" />
+    <div className="min-h-[350px] rounded-2xl bg-[#15171E] border border-[#2A2F3A] animate-pulse" />
+  </div>
+);
 
 type Tab = 'dashboard' | 'users' | 'reports' | 'documentation';
 
@@ -445,21 +459,23 @@ const App: React.FC = () => {
                             />
                         </div>
 
-                        {/* Charts Row 1 */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <Card title="Risk Distribution" className="lg:col-span-1 h-full min-h-[350px]">
-                                <RiskDistributionChart users={data} />
-                            </Card>
-                            <Card title="Risk Matrix Correlation" className="lg:col-span-2 h-full min-h-[350px]">
-                                <RiskMatrix users={data} />
-                            </Card>
-                        </div>
+                        <ChartErrorBoundary>
+                          <Suspense fallback={<ChartsFallback />}>
+                            {/* Charts Row 1 */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <Card title="Risk Distribution" className="lg:col-span-1 h-full min-h-[350px]">
+                                    <RiskDistributionChart users={data} />
+                                </Card>
+                                <Card title="Risk Matrix Correlation" className="lg:col-span-2 h-full min-h-[350px]">
+                                    <RiskMatrix users={data} />
+                                </Card>
+                            </div>
 
-                        {/* Charts Row 2 */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <Card title="Top Security Issues">
-                                <IssuesBarChart users={data} />
-                            </Card>
+                            {/* Charts Row 2 */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <Card title="Top Security Issues">
+                                    <IssuesBarChart users={data} />
+                                </Card>
                             <Card title="Priority Actions">
                                 <div className="space-y-4">
                                     {[
@@ -499,7 +515,9 @@ const App: React.FC = () => {
                                     ))}
                                 </div>
                             </Card>
-                        </div>
+                            </div>
+                          </Suspense>
+                        </ChartErrorBoundary>
                     </div>
                 )}
 
