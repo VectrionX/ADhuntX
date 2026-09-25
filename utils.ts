@@ -1,4 +1,4 @@
-import { ADUserRaw, ADUserProcessed, RiskProfile } from './types';
+import type { ADUserRaw, ADUserProcessed, RiskProfile } from './types';
 
 // Constants for Risk Calculation
 const HIGH_PRIVILEGE_GROUPS = [
@@ -14,35 +14,79 @@ const HIGH_PRIVILEGE_GROUPS = [
 
 const ONE_DAY_MS = 1000 * 60 * 60 * 24;
 
-export const parseCSV = (content: string): ADUserRaw[] => {
-  const lines = content.split(/\r\n|\n/);
-  const headers = lines[0].split(',').map(h => h.trim());
-  
-  const users: ADUserRaw[] = [];
+export const MAX_CSV_BYTES = 5 * 1024 * 1024;
+export const MAX_CSV_ROWS = 10_000;
+export const REQUIRED_CSV_HEADERS = [
+  'UserName', 'SamAccountName', 'Enabled', 'LastLogonDate', 'MemberOf',
+  'Role', 'Department', 'PasswordLastSet', 'PasswordExpiryDate', 'MFAStatus',
+  'PasswordNeverExpires', 'DormantAccountFlag'
+] as const;
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
+export class CSVValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CSVValidationError';
+  }
+}
 
-    // Handle CSV quoting for fields like "Group, Name"
-    const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-    // Simple split fallback if regex fails or simple CSV
-    const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); 
+const csvByteLength = (content: string) => new TextEncoder().encode(content).byteLength;
 
-    if (values.length >= 5) { // Basic validation
-      const user: any = {};
-      headers.forEach((header, index) => {
-        let val = values[index] ? values[index].trim() : '';
-        // Remove quotes if present
-        if (val.startsWith('"') && val.endsWith('"')) {
-          val = val.slice(1, -1);
-        }
-        user[header] = val;
-      });
-      users.push(user as ADUserRaw);
+const parseCSVRow = (line: string, lineNumber: number): string[] => {
+  const values: string[] = [];
+  let value = '';
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (char === '"') {
+      if (quoted && line[index + 1] === '"') {
+        value += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (char === ',' && !quoted) {
+      values.push(value.trim());
+      value = '';
+    } else {
+      value += char;
     }
   }
-  return users;
+  if (quoted) throw new CSVValidationError(`Malformed CSV: unterminated quote on row ${lineNumber}.`);
+  values.push(value.trim());
+  return values;
+};
+
+export const validateCSVContent = (content: string): void => {
+  if (csvByteLength(content) > MAX_CSV_BYTES) {
+    throw new CSVValidationError('CSV exceeds the 5MB limit. Choose a smaller export.');
+  }
+  const lines = content.split(/\r\n|\n/).filter(line => line.trim());
+  if (!lines.length) throw new CSVValidationError('CSV is empty.');
+  if (lines.length - 1 > MAX_CSV_ROWS) {
+    throw new CSVValidationError('CSV exceeds the 10,000-row limit.');
+  }
+  const headers = parseCSVRow(lines[0], 1).map(header => header.trim());
+  const missing = REQUIRED_CSV_HEADERS.filter(header => !headers.includes(header));
+  if (missing.length) throw new CSVValidationError(`Missing required headers: ${missing.join(', ')}.`);
+  if (new Set(headers).size !== headers.length) throw new CSVValidationError('Malformed CSV: duplicate headers.');
+  for (let index = 1; index < lines.length; index += 1) {
+    const values = parseCSVRow(lines[index], index + 1);
+    if (values.length !== headers.length) {
+      throw new CSVValidationError(`Malformed CSV: row ${index + 1} has ${values.length} columns; expected ${headers.length}.`);
+    }
+  }
+};
+
+export const parseCSV = (content: string): ADUserRaw[] => {
+  validateCSVContent(content);
+  const lines = content.split(/\r\n|\n/).filter(line => line.trim());
+  const headers = parseCSVRow(lines[0], 1);
+  return lines.slice(1).map((line, index) => {
+    const values = parseCSVRow(line, index + 2);
+    const user: Record<string, string> = {};
+    headers.forEach((header, column) => { user[header] = values[column] ?? ''; });
+    return user as unknown as ADUserRaw;
+  });
 };
 
 const calculateDaysSince = (dateString: string): number => {

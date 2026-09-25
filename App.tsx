@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Shield, Users, Lock, AlertOctagon, FileText, Download, Activity, RefreshCw, ChevronRight, BarChart3, LayoutDashboard, X, User, BookOpen, Linkedin, Github, Radar, Search, Bell } from 'lucide-react';
-import { parseCSV, processUserData, generateSampleCSV, exportToCSV, downloadCSVTemplate } from './utils';
+import { parseCSV, processUserData, generateSampleCSV, exportToCSV, downloadCSVTemplate, MAX_CSV_BYTES, MAX_CSV_ROWS, REQUIRED_CSV_HEADERS, CSVValidationError } from './utils';
 import { ADUserProcessed } from './types';
 import { Card, StatCard } from './components/ui/Card';
 import { RiskDistributionChart, IssuesBarChart, RiskMatrix } from './components/Charts';
@@ -42,23 +42,34 @@ const App: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setLoading(true);
     setError(null);
+    if (file.size > MAX_CSV_BYTES) {
+      setError('CSV exceeds the 5MB limit. Choose a smaller export.');
+      event.target.value = '';
+      return;
+    }
+
+    setLoading(true);
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
         const rawUsers = parseCSV(text);
-        if (rawUsers.length === 0) throw new Error("No valid users found in CSV.");
+        if (rawUsers.length === 0) throw new CSVValidationError('CSV contains no data rows.');
         const processed = processUserData(rawUsers);
         setData(processed);
-        localStorage.setItem('adSentinelLastImport', JSON.stringify(processed.slice(0, 100))); // Persist sample
       } catch (err) {
-        setError("Failed to parse CSV. Ensure format is correct.");
+        setError(err instanceof CSVValidationError ? err.message : 'Failed to parse CSV. Ensure the required headers and format are correct.');
         console.error(err);
       } finally {
         setLoading(false);
+        event.target.value = '';
       }
+    };
+    reader.onerror = () => {
+      setError('Unable to read this file. Try exporting the CSV again.');
+      setLoading(false);
+      event.target.value = '';
     };
     reader.readAsText(file);
   };
@@ -217,18 +228,7 @@ const App: React.FC = () => {
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="max-w-4xl w-full animate-in fade-in duration-700 flex-1 flex flex-col justify-center items-center z-10">
-            {/* Announcement Banner */}
-            <div className="mb-8 w-full max-w-2xl bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 text-center backdrop-blur-sm shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-                <div className="flex items-center justify-center gap-2 mb-3">
-                     <Shield size={18} className="text-blue-400" />
-                     <h3 className="font-bold text-blue-400 tracking-wider uppercase text-sm">Initial Release Guarantee</h3>
-                </div>
-                <p className="text-slate-300 text-sm leading-relaxed">
-                    Welcome to the initial version of ADhuntX. <strong className="text-white">No data is ever saved, stored, or transmitted.</strong> All analysis is fully loaded into your browser's RAM, and all data is permanently destroyed immediately after closing the session.
-                </p>
-            </div>
-
-            <div className="text-center mb-12">
+            <div className="text-center mb-10">
                 <div className="inline-flex items-center justify-center p-5 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-2xl mb-6 shadow-blue-500/30">
                     <Radar size={56} className="text-white" />
                 </div>
@@ -236,50 +236,45 @@ const App: React.FC = () => {
                 <p className="text-lg text-slate-400 font-light max-w-lg mx-auto">The offline-first Active Directory security analytics platform.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
-                {/* Upload Card */}
-                <div className="bg-[#15171E] rounded-3xl p-1 border border-[#2A2F3A] shadow-2xl">
-                    <div className="bg-[#15171E] rounded-[22px] border border-[#1F2937] p-8 h-full flex flex-col items-center justify-center text-center hover:border-blue-500/30 transition-colors group">
-                        <div className="w-16 h-16 bg-[#1A1D26] rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-[#2A2F3A]">
-                            <Upload className="h-8 w-8 text-blue-500" />
+            <section aria-labelledby="initialize-heading" className="w-full bg-[#15171E] rounded-3xl p-1 border border-[#2A2F3A] shadow-2xl">
+                <div className="bg-[#15171E] rounded-[22px] border border-[#1F2937] p-6 sm:p-8">
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
+                        <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-12 h-12 bg-[#1A1D26] rounded-xl flex items-center justify-center border border-[#2A2F3A]">
+                                    <Upload className="h-6 w-6 text-blue-500" />
+                                </div>
+                                <div>
+                                    <h2 id="initialize-heading" className="text-xl font-bold text-white">Initialize Dashboard</h2>
+                                    <p className="text-slate-500 text-sm">Analyze one Active Directory export locally in your browser.</p>
+                                </div>
+                            </div>
+                            <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 mb-5">
+                                <p className="text-sm font-semibold text-blue-300 mb-2">Required CSV headers</p>
+                                <p className="text-xs leading-relaxed text-slate-400 break-words">{REQUIRED_CSV_HEADERS.join(', ')}</p>
+                                <p className="text-xs text-slate-500 mt-3">CSV only · maximum 5MB or {MAX_CSV_ROWS.toLocaleString()} data rows · no upload or persistence</p>
+                            </div>
+                            <label htmlFor="csv-upload" className={`w-full cursor-pointer focus-within:ring-2 focus-within:ring-blue-300 focus-within:ring-offset-2 focus-within:ring-offset-[#15171E] bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-4 px-6 rounded-xl shadow-lg shadow-blue-900/20 transition-all text-center flex items-center justify-center gap-2 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
+                                <span>{loading ? 'Reading CSV…' : 'Select CSV file'}</span>
+                                <input id="csv-upload" type="file" accept=".csv,text/csv" className="sr-only" onChange={handleFileUpload} disabled={loading} />
+                            </label>
+                            {error && <p role="alert" className="mt-4 text-red-400 text-xs font-medium bg-red-500/10 border border-red-500/10 py-2 px-4 rounded-lg">{error}</p>}
                         </div>
-                        <h2 className="text-xl font-bold text-white mb-2">Initialize Dashboard</h2>
-                        <p className="text-slate-500 mb-8 text-sm leading-relaxed">
-                            Upload your AD export CSV to begin local analysis.
-                        </p>
-                        
-                        <label className="w-full cursor-pointer bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-4 px-6 rounded-xl shadow-lg shadow-blue-900/20 transition-all transform hover:-translate-y-1 active:translate-y-0 text-center flex items-center justify-center gap-2">
-                            <span>Select Data File</span>
-                            <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
-                        </label>
-                        {error && <p className="mt-4 text-red-400 text-xs font-medium bg-red-500/10 border border-red-500/10 py-2 px-4 rounded-lg">{error}</p>}
+                        <div className="lg:w-64 lg:border-l lg:border-[#2A2F3A] lg:pl-8">
+                            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">No file yet?</p>
+                            <h3 className="text-lg font-bold text-white mb-2">Try Demo Mode</h3>
+                            <p className="text-slate-500 mb-5 text-sm leading-relaxed">Explore the dashboard with generated sample data. Nothing leaves this browser.</p>
+                            <button onClick={loadSample} className="w-full bg-[#1A1D26] hover:bg-[#252936] text-white font-semibold py-3 px-5 rounded-xl border border-[#2A2F3A] transition-all hover:border-purple-500/30">
+                                Load Demo Data
+                            </button>
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                {/* Sample Data Card */}
-                <div className="bg-[#15171E] rounded-3xl p-1 border border-[#2A2F3A] shadow-2xl">
-                    <div className="bg-[#15171E] rounded-[22px] border border-[#1F2937] p-8 h-full flex flex-col items-center justify-center text-center hover:border-purple-500/30 transition-colors group">
-                         <div className="w-16 h-16 bg-[#1A1D26] rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-[#2A2F3A]">
-                            <Activity className="h-8 w-8 text-purple-500" />
-                        </div>
-                        <h2 className="text-xl font-bold text-white mb-2">Try Demo Mode</h2>
-                        <p className="text-slate-500 mb-8 text-sm leading-relaxed">
-                            Explore features with generated sample data.
-                        </p>
-                        <button onClick={loadSample} className="w-full bg-[#1A1D26] hover:bg-[#252936] text-white font-semibold py-4 px-6 rounded-xl border border-[#2A2F3A] transition-all hover:border-purple-500/30">
-                            Load Demo Data
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-slate-500">
-                <div className="flex items-center gap-2">
-                    <Shield size={16} className="text-green-500"/> 100% Offline
-                </div>
-                 <div className="flex items-center gap-2">
-                    <Lock size={16} className="text-blue-500"/> Zero-Trust Ready
-                </div>
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-slate-500">
+                <div className="flex items-center gap-2"><Shield size={16} className="text-green-500"/> 100% Offline</div>
+                <div className="flex items-center gap-2"><Lock size={16} className="text-blue-500"/> Zero-Trust Ready</div>
             </div>
         </div>
         <Footer />
