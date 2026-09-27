@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --experimental-strip-types --test tests/parser-boundary.test.ts",
+    "test": "node --experimental-strip-types --test tests/parser-boundary.test.ts tests/browser-boundary.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

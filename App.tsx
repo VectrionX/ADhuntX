@@ -9,7 +9,7 @@ import { UserTable } from './components/UserTable';
 type Tab = 'dashboard' | 'users' | 'reports' | 'documentation';
 
 const Footer = () => (
-  <footer className="mt-12 py-6 text-center text-slate-600 text-xs border-t border-[#1F2937]">
+  <footer className="mt-12 py-6 text-center text-slate-400 text-xs border-t border-[#1F2937]">
     <div className="flex flex-col md:flex-row items-center justify-center gap-6">
       <p>&copy; {new Date().getFullYear()} ADhuntX. MIT License.</p>
       <div className="flex items-center gap-4">
@@ -58,9 +58,9 @@ const App: React.FC = () => {
         if (rawUsers.length === 0) throw new CSVValidationError('CSV contains no data rows.');
         const processed = processUserData(rawUsers);
         setData(processed);
-      } catch (err) {
-        setError(err instanceof CSVValidationError ? err.message : 'Failed to parse CSV. Ensure the required headers and format are correct.');
-        console.error(err);
+      } catch {
+        setError('Failed to parse CSV. Ensure the required headers and format are correct.');
+        // Deliberately avoid logging parsed input or validation details.
       } finally {
         setLoading(false);
         event.target.value = '';
@@ -232,8 +232,8 @@ const App: React.FC = () => {
                 <div className="inline-flex items-center justify-center p-5 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-2xl mb-6 shadow-blue-500/30">
                     <Radar size={56} className="text-white" />
                 </div>
-                <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">ADhuntX <span className="text-blue-500">Pro</span></h1>
-                <p className="text-lg text-slate-400 font-light max-w-lg mx-auto">The offline-first Active Directory security analytics platform.</p>
+                <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">ADhuntX <span className="text-blue-300">Local CSV Triage</span></h1>
+                <p className="text-lg text-slate-300 font-light max-w-lg mx-auto">Conservative, evidence-linked triage for a local CSV export using basic heuristics.</p>
             </div>
 
             <section aria-labelledby="initialize-heading" className="w-full bg-[#15171E] rounded-3xl p-1 border border-[#2A2F3A] shadow-2xl">
@@ -249,10 +249,10 @@ const App: React.FC = () => {
                                     <p className="text-slate-500 text-sm">Analyze one Active Directory export locally in your browser.</p>
                                 </div>
                             </div>
-                            <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 mb-5">
-                                <p className="text-sm font-semibold text-blue-300 mb-2">Required CSV headers</p>
-                                <p className="text-xs leading-relaxed text-slate-400 break-words">{REQUIRED_CSV_HEADERS.join(', ')}</p>
-                                <p className="text-xs text-slate-500 mt-3">CSV only · maximum 5MB or {MAX_CSV_ROWS.toLocaleString()} data rows · no upload or persistence</p>
+                            <div className="rounded-xl border border-blue-300/30 bg-blue-500/10 p-4 mb-5">
+                                <p className="text-sm font-semibold text-blue-200 mb-2">Required CSV headers</p>
+                                <p className="text-xs leading-relaxed text-slate-300 break-words">{REQUIRED_CSV_HEADERS.join(', ')}</p>
+                                <p className="text-xs text-slate-300 mt-3">CSV only · maximum 5MB or {MAX_CSV_ROWS.toLocaleString()} data rows · no upload or persistence</p>
                             </div>
                             <label htmlFor="csv-upload" className={`w-full cursor-pointer focus-within:ring-2 focus-within:ring-blue-300 focus-within:ring-offset-2 focus-within:ring-offset-[#15171E] bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-4 px-6 rounded-xl shadow-lg shadow-blue-900/20 transition-all text-center flex items-center justify-center gap-2 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
                                 <span>{loading ? 'Reading CSV…' : 'Select CSV file'}</span>
@@ -273,8 +273,8 @@ const App: React.FC = () => {
             </section>
 
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-slate-500">
-                <div className="flex items-center gap-2"><Shield size={16} className="text-green-500"/> 100% Offline</div>
-                <div className="flex items-center gap-2"><Lock size={16} className="text-blue-500"/> Zero-Trust Ready</div>
+                <div className="flex items-center gap-2 text-slate-300"><Shield size={16} className="text-green-400"/> Browser-local processing</div>
+                <div className="flex items-center gap-2 text-slate-300"><Lock size={16} className="text-blue-300"/> No upload or persistence</div>
             </div>
         </div>
         <Footer />
@@ -519,7 +519,7 @@ const App: React.FC = () => {
                         <Card title="System Overview" className="border-l-4 border-l-blue-500">
                             <div className="prose prose-invert max-w-none text-slate-300">
                                 <p className="text-lg font-light leading-relaxed">
-                                    <strong className="text-white">ADhuntX</strong> is an advanced, offline-first security analytics platform designed to audit Active Directory environments. It correlates privilege data with password hygiene metrics to produce a unified risk score.
+                                    <strong className="text-white">ADhuntX</strong> evaluates only the values in a supplied CSV export. It runs basic, transparent heuristics in this browser tab; it does not query Active Directory or Entra, build an AD graph, calculate effective permissions, analyze attack paths, upload data, or save imports.
                                 </p>
                             </div>
                         </Card>

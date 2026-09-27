@@ -3,9 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ADhuntX - Security Dashboard</title>
+    <title>ADhuntX Local CSV Triage</title>
+    <meta name="description" content="ADhuntX is a browser-local CSV triage tool using basic heuristics. Imports stay in this browser tab and are not uploaded or saved." />
+    <link rel="canonical" href="https://adhuntx.vectrionx.com/" />
+    <meta property="og:title" content="ADhuntX Local CSV Triage" />
+    <meta property="og:description" content="Conservative, evidence-linked triage for a local CSV export using basic heuristics." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://adhuntx.vectrionx.com/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="ADhuntX Local CSV Triage" />
+    <meta name="twitter:description" content="Browser-local CSV triage. No upload, connectors, or persistence." />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "ADhuntX Local CSV Triage",
+        "url": "https://adhuntx.vectrionx.com/",
+        "description": "Browser-local CSV triage using basic heuristics. Imports are not uploaded or saved.",
+        "applicationCategory": "SecurityApplication",
+        "operatingSystem": "Any modern web browser",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
@@ -17,16 +38,14 @@
               primary: '#3B82F6',    // Neon Blue
               secondary: '#8B5CF6',  // Neon Purple
             },
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            }
+            fontFamily: { sans: ['system-ui', 'sans-serif'] }
           }
         }
       }
     </script>
     <style>
       body {
-        font-family: 'Inter', sans-serif;
+        font-family: system-ui, sans-serif;
         background-color: #0B0E11;
         color: #f8fafc;
       }
