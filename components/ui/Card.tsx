@@ -36,9 +36,10 @@ interface StatCardProps {
 }
 
 export const StatCard: React.FC<StatCardProps> = ({ label, value, trend, color = "text-white", icon, onClick, tooltipText }) => (
-  <div 
-    onClick={onClick}
-    className={`relative group bg-surface p-6 rounded-2xl border border-border shadow-lg flex flex-col justify-between transition-all hover:bg-[#1A1D26] hover:border-primary/30 ${onClick ? 'cursor-pointer' : ''}`}
+  <div className={`relative group bg-surface rounded-2xl border border-border shadow-lg transition-all hover:bg-[#1A1D26] hover:border-primary/30 ${onClick ? 'cursor-pointer' : ''}`}>
+  <div
+    role={onClick ? undefined : 'group'}
+    className="relative z-10 flex h-full flex-col justify-between p-6"
   >
     {/* Hover Glow Effect */}
     <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-secondary rounded-2xl blur opacity-0 group-hover:opacity-10 transition duration-500"></div>
@@ -70,5 +71,7 @@ export const StatCard: React.FC<StatCardProps> = ({ label, value, trend, color =
         </div>
       )}
     </div>
+  </div>
+  {onClick && <button type="button" aria-label={`Open ${label}`} onClick={onClick} className="absolute inset-0 z-20 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"><span className="sr-only">Open {label}</span></button>}
   </div>
 );

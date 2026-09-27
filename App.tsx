@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Shield, Users, Lock, AlertOctagon, FileText, Download, Activity, RefreshCw, ChevronRight, BarChart3, LayoutDashboard, X, User, BookOpen, Linkedin, Github, Radar, Search, Bell } from 'lucide-react';
 import { parseCSV, processUserData, generateSampleCSV, exportToCSV, downloadCSVTemplate, MAX_CSV_BYTES, MAX_CSV_ROWS, REQUIRED_CSV_HEADERS, CSVValidationError } from './utils';
 import { ADUserProcessed } from './types';
@@ -37,6 +37,17 @@ const App: React.FC = () => {
 
   // Modal State
   const [selectedUser, setSelectedUser] = useState<ADUserProcessed | null>(null);
+  const closeModalRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!selectedUser) return;
+    closeModalRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedUser(null);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [selectedUser]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -108,8 +119,8 @@ const App: React.FC = () => {
     if (!selectedUser) return null;
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-        <div className="bg-[#0B0E11] border border-[#2A2F3A] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar relative overflow-hidden">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedUser(null); }}>
+        <div role="dialog" aria-modal="true" aria-labelledby="user-detail-title" className="bg-[#0B0E11] border border-[#2A2F3A] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar relative overflow-hidden">
           {/* Top Gradient Line */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500"></div>
 
@@ -119,12 +130,12 @@ const App: React.FC = () => {
                     <User size={24} />
                 </div>
                 <div>
-                    <h2 className="text-xl font-bold text-white tracking-tight">{selectedUser.UserName}</h2>
+                    <h2 id="user-detail-title" className="text-xl font-bold text-white tracking-tight">{selectedUser.UserName}</h2>
                     <p className="text-slate-400 text-sm font-medium">{selectedUser.SamAccountName} • <span className="text-slate-500">{selectedUser.Department || 'No Dept'}</span></p>
                 </div>
             </div>
-            <button onClick={() => setSelectedUser(null)} className="p-2 rounded-lg hover:bg-[#1F2937] text-slate-400 hover:text-white transition-colors">
-              <X size={20} />
+            <button ref={closeModalRef} type="button" aria-label="Close user details" onClick={() => setSelectedUser(null)} className="p-2 rounded-lg hover:bg-[#1F2937] text-slate-300 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300">
+              <X aria-hidden="true" size={20} />
             </button>
           </div>
           
@@ -365,7 +376,9 @@ const App: React.FC = () => {
                         <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full"></span>
                     </div>
 
-                    <button 
+                    <button
+                        type="button"
+                        aria-label="Export CSV"
                         onClick={handleExport}
                         className="flex items-center gap-2 px-4 lg:px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold shadow-lg shadow-blue-600/20 transition-all transform active:scale-95 text-sm ml-auto md:ml-0"
                     >
