@@ -44,6 +44,15 @@ const App: React.FC = () => {
     closeModalRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setSelectedUser(null);
+      if (event.key === 'Tab') {
+        const dialog = document.querySelector('[role="dialog"]');
+        const focusable = dialog?.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!focusable?.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
@@ -371,10 +380,10 @@ const App: React.FC = () => {
                         <input type="text" placeholder="Search..." className="pl-10 pr-4 py-2.5 bg-[#15171E] border border-[#2A2F3A] rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-64 transition-all" />
                     </div>
 
-                    <div className="h-10 w-10 rounded-xl bg-[#15171E] border border-[#2A2F3A] flex items-center justify-center text-slate-400 hover:text-white hover:border-slate-500 transition-colors cursor-pointer relative">
+                    <button type="button" aria-label="Notifications" className="h-10 w-10 rounded-xl bg-[#15171E] border border-[#2A2F3A] flex items-center justify-center text-slate-300 hover:text-white hover:border-slate-500 transition-colors relative focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300">
                         <Bell size={18} />
                         <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full"></span>
-                    </div>
+                    </button>
 
                     <button
                         type="button"

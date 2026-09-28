@@ -187,11 +187,11 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
                                 ))}
                                 {user.risk.issues.length > 2 && (
                                     <div className="relative group/more inline-flex">
-                                        <button type="button" aria-label={`Show ${user.risk.issues.length - 2} more issues`} className="text-[10px] text-slate-300 bg-[#0B0E11] px-2 py-1 rounded border border-[#2A2F3A] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 transition-colors">
+                                        <button type="button" aria-label={`Show ${user.risk.issues.length - 2} more issues`} aria-describedby={`issues-${user.id}`} className="text-[10px] text-slate-300 bg-[#0B0E11] px-2 py-1 rounded border border-[#2A2F3A] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 transition-colors">
                                             +{user.risk.issues.length - 2}
                                         </button>
                                         {/* Issues Tooltip */}
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-[#1A1D26] text-slate-200 text-xs rounded-xl shadow-xl border border-[#2A2F3A] opacity-0 group-hover/more:opacity-100 pointer-events-none z-50">
+                                        <div id={`issues-${user.id}`} role="tooltip" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-[#1A1D26] text-slate-200 text-xs rounded-xl shadow-xl border border-[#2A2F3A] opacity-0 group-hover/more:opacity-100 group-focus-within/more:opacity-100 pointer-events-none z-50">
                                             <ul className="list-disc pl-3 space-y-1 text-[11px]">
                                                 {user.risk.issues.slice(2).map((issue, k) => (
                                                     <li key={k}>{issue}</li>

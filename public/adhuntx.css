@@ -2523,3 +2523,27 @@ body {
     line-height: 2.25rem;
   }
 }
+/* Local accessibility hardening: keep muted copy readable on the dark surface. */
+.text-slate-500 { color: #94a3b8 !important; }
+.text-slate-600 { color: #cbd5e1 !important; }
+.text-slate-400 { color: #cbd5e1 !important; }
+.text-red-400, .text-red-300 { color: #fca5a5 !important; }
+.text-orange-400 { color: #fdba74 !important; }
+.text-green-400 { color: #86efac !important; }
+.text-blue-400 { color: #93c5fd !important; }
+.text-blue-500 { color: #93c5fd !important; }
+.text-indigo-300 { color: #c4b5fd !important; }
+.text-purple-500 { color: #c4b5fd !important; }
+.text-orange-500 { color: #fdba74 !important; }
+.text-red-500 { color: #fca5a5 !important; }
+.text-green-500 { color: #86efac !important; }
+.text-yellow-400 { color: #fde68a !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
