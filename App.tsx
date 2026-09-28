@@ -38,9 +38,23 @@ const App: React.FC = () => {
   // Modal State
   const [selectedUser, setSelectedUser] = useState<ADUserProcessed | null>(null);
   const closeModalRef = useRef<HTMLButtonElement>(null);
+  const reviewInvokerRef = useRef<HTMLElement | null>(null);
+
+  const resetData = () => {
+    setData(null);
+    setSelectedUser(null);
+    setUserTableFilters({ riskLevel: 'All', search: '' });
+    setCurrentTab('dashboard');
+    setError(null);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    if (!selectedUser) return;
+    if (!selectedUser) {
+      reviewInvokerRef.current?.focus();
+      reviewInvokerRef.current = null;
+      return;
+    }
     closeModalRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setSelectedUser(null);
@@ -140,7 +154,7 @@ const App: React.FC = () => {
                 </div>
                 <div>
                     <h2 id="user-detail-title" className="text-xl font-bold text-white tracking-tight">{selectedUser.UserName}</h2>
-                    <p className="text-slate-400 text-sm font-medium">{selectedUser.SamAccountName} • <span className="text-slate-500">{selectedUser.Department || 'No Dept'}</span></p>
+                    <p className="text-slate-400 text-sm font-medium">{selectedUser.SamAccountName} • <span className="text-slate-400">{selectedUser.Department || 'No Dept'}</span></p>
                 </div>
             </div>
             <button ref={closeModalRef} type="button" aria-label="Close user details" onClick={() => setSelectedUser(null)} className="p-2 rounded-lg hover:bg-[#1F2937] text-slate-300 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300">
@@ -152,14 +166,14 @@ const App: React.FC = () => {
             {/* Risk Score Summary */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
                 <div className={`p-6 rounded-2xl border ${selectedUser.risk.totalRiskScore > 70 ? 'bg-red-500/5 border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.1)]' : 'bg-[#15171E] border-[#2A2F3A]'}`}>
-                    <p className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-2">Total Risk Score</p>
+                    <p className="text-xs uppercase tracking-widest font-bold text-slate-400 mb-2">Total Risk Score</p>
                     <div className="flex items-baseline gap-2">
                         <span className={`text-4xl font-bold ${selectedUser.risk.totalRiskScore > 70 ? 'text-red-500' : 'text-white'}`}>{selectedUser.risk.totalRiskScore}</span>
-                        <span className="text-sm text-slate-600 font-medium">/ 100</span>
+                        <span className="text-sm text-slate-400 font-medium">/ 100</span>
                     </div>
                 </div>
                 <div className="p-6 rounded-2xl bg-[#15171E] border border-[#2A2F3A]">
-                    <p className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-4">Account Status</p>
+                    <p className="text-xs uppercase tracking-widest font-bold text-slate-400 mb-4">Account Status</p>
                     <div className="space-y-3">
                         <div className="flex justify-between text-sm items-center">
                             <span className="text-slate-400">Enabled</span>
@@ -195,7 +209,7 @@ const App: React.FC = () => {
                             })}
                         </div>
                     ) : (
-                        <p className="text-slate-600 text-sm italic">No group memberships found.</p>
+                        <p className="text-slate-400 text-sm italic">No group memberships found.</p>
                     )}
                 </div>
             </div>
@@ -266,7 +280,7 @@ const App: React.FC = () => {
                                 </div>
                                 <div>
                                     <h2 id="initialize-heading" className="text-xl font-bold text-white">Initialize Dashboard</h2>
-                                    <p className="text-slate-500 text-sm">Analyze one Active Directory export locally in your browser.</p>
+                                    <p className="text-slate-300 text-sm">Analyze one Active Directory export locally in your browser.</p>
                                 </div>
                             </div>
                             <div className="rounded-xl border border-blue-300/30 bg-blue-500/10 p-4 mb-5">
@@ -274,16 +288,16 @@ const App: React.FC = () => {
                                 <p className="text-xs leading-relaxed text-slate-300 break-words">{REQUIRED_CSV_HEADERS.join(', ')}</p>
                                 <p className="text-xs text-slate-300 mt-3">CSV only · maximum 5MB or {MAX_CSV_ROWS.toLocaleString()} data rows · no upload or persistence</p>
                             </div>
-                            <label htmlFor="csv-upload" className={`w-full cursor-pointer focus-within:ring-2 focus-within:ring-blue-300 focus-within:ring-offset-2 focus-within:ring-offset-[#15171E] bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-4 px-6 rounded-xl shadow-lg shadow-blue-900/20 transition-all text-center flex items-center justify-center gap-2 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
+                            <label htmlFor="csv-upload" className={`w-full cursor-pointer focus-within:ring-2 focus-within:ring-blue-300 focus-within:ring-offset-2 focus-within:ring-offset-[#15171E] bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg shadow-blue-900/20 transition-all text-center flex items-center justify-center gap-2 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
                                 <span>{loading ? 'Reading CSV…' : 'Select CSV file'}</span>
                                 <input id="csv-upload" type="file" accept=".csv,text/csv" className="sr-only" onChange={handleFileUpload} disabled={loading} />
                             </label>
                             {error && <p role="alert" className="mt-4 text-red-400 text-xs font-medium bg-red-500/10 border border-red-500/10 py-2 px-4 rounded-lg">{error}</p>}
                         </div>
                         <div className="lg:w-64 lg:border-l lg:border-[#2A2F3A] lg:pl-8">
-                            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">No file yet?</p>
+                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">No file yet?</p>
                             <h3 className="text-lg font-bold text-white mb-2">Try Demo Mode</h3>
-                            <p className="text-slate-500 mb-5 text-sm leading-relaxed">Explore the dashboard with generated sample data. Nothing leaves this browser.</p>
+                            <p className="text-slate-300 mb-5 text-sm leading-relaxed">Explore the dashboard with generated sample data. Nothing leaves this browser.</p>
                             <button onClick={loadSample} className="w-full bg-[#1A1D26] hover:bg-[#252936] text-white font-semibold py-3 px-5 rounded-xl border border-[#2A2F3A] transition-all hover:border-purple-500/30">
                                 Load Demo Data
                             </button>
@@ -292,7 +306,7 @@ const App: React.FC = () => {
                 </div>
             </section>
 
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-slate-500">
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-slate-300">
                 <div className="flex items-center gap-2 text-slate-300"><Shield size={16} className="text-green-400"/> Browser-local processing</div>
                 <div className="flex items-center gap-2 text-slate-300"><Lock size={16} className="text-blue-300"/> No upload or persistence</div>
             </div>
@@ -336,13 +350,13 @@ const App: React.FC = () => {
                     </div>
                     <div className="overflow-hidden">
                         <p className="text-sm font-bold text-white truncate">Domain Admin</p>
-                        <p className="text-xs text-slate-500 truncate">Security Analyst</p>
+                        <p className="text-xs text-slate-300 truncate">Security Analyst</p>
                     </div>
                 </div>
             </div>
             
             <nav className="flex-1 px-4 space-y-1">
-                <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 mt-2">Menu</p>
+                <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 mt-2">Menu</p>
                 <NavButton id="dashboard" label="Dashboard" icon={LayoutDashboard} />
                 <NavButton id="users" label="User Analysis" icon={Users} />
                 <NavButton id="reports" label="Reports" icon={FileText} />
@@ -350,7 +364,7 @@ const App: React.FC = () => {
             </nav>
 
             <div className="p-6">
-                <button onClick={() => setData(null)} className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-[#1A1D26] hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all border border-[#2A2F3A] text-slate-400 text-sm font-medium group">
+                <button onClick={resetData} className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-[#1A1D26] hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all border border-[#2A2F3A] text-slate-300 text-sm font-medium group">
                     <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-500"/>
                     <span>Reset Data</span>
                 </button>
@@ -362,14 +376,10 @@ const App: React.FC = () => {
             {/* Top Bar */}
             <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 lg:mb-10 gap-4">
                 <div>
-                    <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight mb-1">
-                        {currentTab === 'dashboard' && 'Security Overview'}
-                        {currentTab === 'users' && 'User Risk Analysis'}
-                        {currentTab === 'reports' && 'Export Reports'}
-                        {currentTab === 'documentation' && 'Documentation'}
-                    </h1>
+                        <h1 className="text-2xl lg:text-3xl font-bold text-white tracking-tight mb-1">ADhuntX Local CSV Triage</h1>
+                    <p className="text-slate-200 text-sm font-medium">{currentTab === 'dashboard' ? 'Security Overview' : currentTab === 'users' ? 'User Risk Analysis' : currentTab === 'reports' ? 'Export Reports' : 'Documentation'}</p>
                     <p className="text-slate-400 text-sm font-medium">
-                        Last scan updated: <span className="text-blue-400">{new Date().toLocaleDateString()}</span>
+                        Current tab only · processed in browser memory
                     </p>
                 </div>
                 
@@ -479,7 +489,7 @@ const App: React.FC = () => {
                                                         item.color === 'orange' ? 'text-orange-400' :
                                                         'text-blue-400'
                                                     }`}>{item.title}</p>
-                                                    <p className="text-slate-500 text-xs font-medium">Affects {item.count} users</p>
+                                                    <p className="text-slate-300 text-xs font-medium">Affects {item.count} users</p>
                                                 </div>
                                             </div>
                                             <button 
@@ -504,7 +514,7 @@ const App: React.FC = () => {
                                 users={data} 
                                 initialRiskFilter={userTableFilters.riskLevel}
                                 initialSearch={userTableFilters.search}
-                                onUserClick={setSelectedUser}
+                                onUserClick={(user) => { reviewInvokerRef.current = document.activeElement as HTMLElement; setSelectedUser(user); }}
                             />
                         </Card>
                     </div>
@@ -525,7 +535,7 @@ const App: React.FC = () => {
                                 </p>
                                 <button 
                                     onClick={handleExport}
-                                    className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-blue-500/30 transition-all transform hover:-translate-y-1 active:translate-y-0"
+                                    className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-700 to-blue-600 text-white font-bold rounded-xl hover:from-blue-600 hover:to-blue-700 hover:shadow-lg hover:shadow-blue-500/30 transition-all transform hover:-translate-y-1 active:translate-y-0"
                                 >
                                     <Download size={20} />
                                     Download Full Report
@@ -579,7 +589,7 @@ const App: React.FC = () => {
 {`Get-ADUser -Filter * -Properties ... | Export-Csv "ADUsers.csv"`}
                                             </pre>
                                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                 <span className="text-[10px] text-slate-500">Copy script from README</span>
+                                                 <span className="text-[10px] text-slate-300">Copy script from README</span>
                                             </div>
                                         </div>
                                     </div>

@@ -243,6 +243,14 @@ export const downloadCSVTemplate = () => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+const escapeCSVCell = (value: unknown): string => {
+  const text = String(value ?? '');
+  // Prevent spreadsheet applications from interpreting imported values as formulas.
+  const safeText = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return `"${safeText.replace(/"/g, '""')}"`;
 };
 
 export const exportToCSV = (users: ADUserProcessed[]) => {
@@ -255,23 +263,23 @@ export const exportToCSV = (users: ADUserProcessed[]) => {
   ];
 
   const csvContent = [
-    headers.join(','),
+    headers.map(escapeCSVCell).join(','),
     ...users.map(u => {
       const row = [
-        `"${u.UserName}"`,
-        `"${u.SamAccountName}"`,
-        `"${u.Department || ''}"`,
+        u.UserName,
+        u.SamAccountName,
+        u.Department || '',
         u.Enabled,
         u.risk.riskLevel,
         u.risk.totalRiskScore,
         u.risk.privilegeScore,
         u.risk.passwordHygieneScore,
-        `"${u.risk.issues.join('; ')}"`,
-        `"${u.risk.recommendations.join('; ')}"`,
+        u.risk.issues.join('; '),
+        u.risk.recommendations.join('; '),
         u.LastLogonDate,
         u.hasMFA
       ];
-      return row.join(',');
+      return row.map(escapeCSVCell).join(',');
     })
   ].join('\n');
 
@@ -283,4 +291,5 @@ export const exportToCSV = (users: ADUserProcessed[]) => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };

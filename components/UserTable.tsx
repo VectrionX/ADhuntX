@@ -91,6 +91,7 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
             </div>
              <input
                 type="text"
+                aria-label="Search users"
                 placeholder="Search users..."
                 className="w-full pl-9 pr-4 py-2.5 bg-[#0B0E11] border border-[#2A2F3A] rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 focus:outline-none text-slate-200 placeholder-slate-600 text-sm transition-all"
                 value={filter}
@@ -118,16 +119,16 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
       <div className="overflow-hidden rounded-xl border border-[#2A2F3A] shadow-2xl bg-[#15171E]">
         <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-[#1A1D26] text-[11px] uppercase text-slate-400 font-bold tracking-wider border-b border-[#2A2F3A]">
+            <thead className="bg-[#1A1D26] text-[11px] uppercase text-slate-300 font-bold tracking-wider border-b border-[#2A2F3A]">
                 <tr>
-                <th className="px-6 py-4">
-                    <button type="button" className="flex items-center gap-2 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 rounded" onClick={() => handleSort('UserName')}>IDENTITY <ArrowUpDown aria-hidden="true" size={12} /></button>
+                <th aria-sort={sortConfig?.key === 'UserName' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-4">
+                    <button type="button" aria-label="Sort by identity" className="flex items-center gap-2 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 rounded" onClick={() => handleSort('UserName')}>IDENTITY <ArrowUpDown aria-hidden="true" size={12} /></button>
                 </th>
-                <th className="px-6 py-4">
-                    <button type="button" className="flex items-center gap-2 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 rounded" onClick={() => handleSort('Department')}>DEPT <ArrowUpDown aria-hidden="true" size={12} /></button>
+                <th aria-sort={sortConfig?.key === 'Department' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-4">
+                    <button type="button" aria-label="Sort by department" className="flex items-center gap-2 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 rounded" onClick={() => handleSort('Department')}>DEPT <ArrowUpDown aria-hidden="true" size={12} /></button>
                 </th>
-                <th className="px-6 py-4">
-                    <button type="button" className="flex items-center gap-2 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 rounded" onClick={() => handleSort('totalRiskScore')}>
+                <th aria-sort={sortConfig?.key === 'totalRiskScore' ? (sortConfig.direction === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-4">
+                    <button type="button" aria-label="Sort by risk score" className="flex items-center gap-2 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 rounded" onClick={() => handleSort('totalRiskScore')}>
                         RISK SCORE <ArrowUpDown aria-hidden="true" size={12} />
                         <Tooltip text="Combined score of Privilege Risk (60%) and Password Hygiene (40%)" />
                     </button>
@@ -152,7 +153,7 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
                         </div>
                         <div>
                             <div className="font-semibold text-white group-hover:text-blue-400 transition-colors">{user.UserName}</div>
-                            <div className="text-xs text-slate-500 font-mono">{user.SamAccountName}</div>
+                            <div className="text-xs text-slate-300 font-mono">{user.SamAccountName}</div>
                         </div>
                     </div>
                     </td>
@@ -168,11 +169,11 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
                     <td className="px-6 py-4">
                         <div className="flex flex-col gap-1.5 text-[11px]">
                             <div className="flex items-center justify-between w-32 bg-[#0B0E11] px-2 py-1 rounded border border-[#2A2F3A]">
-                                <span className="text-slate-500">Privilege</span>
+                                <span className="text-slate-300">Privilege</span>
                                 <b className={`font-mono ${user.risk.privilegeScore > 50 ? 'text-orange-400' : 'text-slate-300'}`}>{user.risk.privilegeScore}</b>
                             </div>
                             <div className="flex items-center justify-between w-32 bg-[#0B0E11] px-2 py-1 rounded border border-[#2A2F3A]">
-                                <span className="text-slate-500">Hygiene</span>
+                                <span className="text-slate-300">Hygiene</span>
                                 <b className={`font-mono ${user.risk.passwordHygieneScore > 50 ? 'text-red-400' : 'text-slate-300'}`}>{user.risk.passwordHygieneScore}</b>
                             </div>
                         </div>
@@ -220,7 +221,7 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
                 ))}
                 {paginatedUsers.length === 0 && (
                     <tr>
-                        <td colSpan={6} className="px-6 py-16 text-center text-slate-500">
+                        <td colSpan={6} className="px-6 py-16 text-center text-slate-300">
                             <div className="flex flex-col items-center justify-center">
                                 <div className="p-4 bg-[#1A1D26] rounded-full mb-3 border border-[#2A2F3A]">
                                     <Shield size={32} className="text-slate-600"/>
@@ -238,7 +239,7 @@ export const UserTable: React.FC<Props> = ({ users, initialRiskFilter = 'All', i
 
       {/* Pagination Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 py-2 px-1">
-         <div className="text-xs text-slate-500 font-medium">
+         <div className="text-xs text-slate-300 font-medium">
              Showing <span className="text-white">{Math.min(startIndex + 1, sortedUsers.length)}</span> to <span className="text-white">{Math.min(startIndex + itemsPerPage, sortedUsers.length)}</span> of <span className="text-white">{sortedUsers.length}</span> users
          </div>
          

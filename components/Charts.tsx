@@ -16,7 +16,7 @@ const COLORS = {
   Secondary: '#8B5CF6' // Purple Neon
 };
 
-const AXIS_STYLE = { fontSize: 11, fill: '#64748B', fontWeight: 500 }; 
+const AXIS_STYLE = { fontSize: 11, fill: '#CBD5E1', fontWeight: 500 };
 const TOOLTIP_STYLE = { 
     backgroundColor: '#15171E', 
     borderColor: '#2A2F3A', 
@@ -121,31 +121,31 @@ export const RiskMatrix: React.FC<ChartsProps> = ({ users }) => {
     return (
         <div className="grid grid-cols-2 gap-2 h-[300px] p-2 relative rounded-xl">
              {/* Labels */}
-             <div className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-bold text-slate-500 uppercase tracking-widest origin-center">Password Risk</div>
-             <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Privilege Risk</div>
+             <div className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-bold text-slate-300 uppercase tracking-widest origin-center">Password Risk</div>
+             <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-300 uppercase tracking-widest">Privilege Risk</div>
 
             {/* Q2: High Priv / Low Pass Risk */}
             <div className={`flex flex-col items-center justify-center rounded-lg border border-border p-2 bg-[#1A1D26] ${matrix[2].count > 0 ? 'bg-gradient-to-br from-orange-500/10 to-orange-500/5 border-orange-500/20' : ''}`}>
                 <span className="text-3xl font-bold text-orange-500 drop-shadow-[0_0_8px_rgba(249,115,22,0.5)]">{matrix[2].count}</span>
-                <span className="text-[10px] uppercase font-semibold text-center text-slate-500 mt-2">High Priv<br/>Good Hygiene</span>
+                <span className="text-[10px] uppercase font-semibold text-center text-slate-300 mt-2">High Priv<br/>Good Hygiene</span>
             </div>
 
             {/* Q4: High Priv / High Pass Risk (CRITICAL) */}
             <div className={`flex flex-col items-center justify-center rounded-lg border border-border p-2 bg-[#1A1D26] ${matrix[3].count > 0 ? 'bg-gradient-to-br from-red-500/10 to-red-500/5 border-red-500/20 shadow-[inset_0_0_20px_rgba(239,68,68,0.1)]' : ''}`}>
                  <span className="text-3xl font-bold text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">{matrix[3].count}</span>
-                 <span className="text-[10px] uppercase font-semibold text-center text-slate-500 mt-2">High Priv<br/>Poor Hygiene</span>
+                 <span className="text-[10px] uppercase font-semibold text-center text-slate-300 mt-2">High Priv<br/>Poor Hygiene</span>
             </div>
 
             {/* Q1: Low Priv / Low Pass Risk */}
             <div className={`flex flex-col items-center justify-center rounded-lg border border-border p-2 bg-[#1A1D26] ${matrix[0].count > 0 ? 'bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20' : ''}`}>
                 <span className="text-3xl font-bold text-green-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]">{matrix[0].count}</span>
-                <span className="text-[10px] uppercase font-semibold text-center text-slate-500 mt-2">Low Priv<br/>Good Hygiene</span>
+                <span className="text-[10px] uppercase font-semibold text-center text-slate-300 mt-2">Low Priv<br/>Good Hygiene</span>
             </div>
 
              {/* Q3: Low Priv / High Pass Risk */}
              <div className={`flex flex-col items-center justify-center rounded-lg border border-border p-2 bg-[#1A1D26] ${matrix[1].count > 0 ? 'bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border-yellow-500/20' : ''}`}>
                 <span className="text-3xl font-bold text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">{matrix[1].count}</span>
-                <span className="text-[10px] uppercase font-semibold text-center text-slate-500 mt-2">Low Priv<br/>Poor Hygiene</span>
+                <span className="text-[10px] uppercase font-semibold text-center text-slate-300 mt-2">Low Priv<br/>Poor Hygiene</span>
             </div>
         </div>
     )

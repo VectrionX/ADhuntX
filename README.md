@@ -20,7 +20,7 @@ npm install
 npm run dev
 ```
 
-The app is intentionally client-only. No API key, server endpoint, or AI connector is required.
+The app is intentionally client-only. No API key, server endpoint, AI connector, or cloud processing is involved.
 
 ## CSV input
 

@@ -24,10 +24,8 @@ We take the security of ADhuntX seriously. If you have found a vulnerability, pl
 
 We will acknowledge your report within 48 hours and provide an estimated timeline for a fix.
 
-### Data Privacy & Offline Assurance
+### Data Privacy & Processing Boundary
 
-ADhuntX is explicitly designed to run 100% offline in the client's browser.
-- **No Telemetry:** We do not collect usage data.
-- **No External Calls:** The application should not make outbound network requests (except for loading local resources or explicitly defined CDN assets like fonts/icons during development).
+ADhuntX processes one user-selected CSV in browser memory using deterministic, basic heuristics. Imports stay in the current tab, are not uploaded or saved, and are discarded on reset or reload. The application has no backend, telemetry, API key, AI connector, directory connector, or cloud-processing path. Initial assets are served from this application; user-initiated footer links are not data-processing calls.
 
-If you discover a mechanism where data is inadvertently transmitted externally, please report this as a critical vulnerability immediately.
+If you discover a mechanism that transmits imported CSV content or derived findings externally, please report it as a critical vulnerability immediately.

@@ -1,6 +1,6 @@
 {
   "name": "ADhuntX",
-  "description": "A fully integrated, offline Active Directory Security Dashboard for analyzing privilege risks and password hygiene.",
+  "description": "A browser-local CSV triage tool using basic heuristics; imports stay in the current browser tab and are not uploaded or saved.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
