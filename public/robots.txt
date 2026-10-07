@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://adhuntx.vectrionx.com/sitemap.xml
