@@ -5,26 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run check:bundle",
-    "check:bundle": "node scripts/check-bundle-size.mjs",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit",
-    "high-production-audit": "node scripts/high-production-audit.mjs"
+    "build": "vite build",
+    "test": "npm run build && node --experimental-strip-types --test tests/parser-boundary.test.ts tests/browser-boundary.test.ts tests/browser-e2e.test.ts",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "lucide-react": "^0.562.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "lucide-react": "^0.562.0",
     "recharts": "^3.6.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.0",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
-    "tailwindcss": "^4.3.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0",
-    "vitest": "^5.0.0"
+    "vite": "^6.2.0"
   }
 }

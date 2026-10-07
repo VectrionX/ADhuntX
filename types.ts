@@ -1,25 +1,16 @@
 export interface ADUserRaw {
   UserName: string;
   SamAccountName: string;
-  Enabled: string;
+  Enabled: string; // "True" | "False"
   LastLogonDate: string;
-  MemberOf: string;
+  MemberOf: string; // Comma or pipe separated
   Role?: string;
   Department?: string;
-  PasswordLastSet?: string;
+  PasswordLastSet: string;
   PasswordExpiryDate: string;
-  MFAStatus: string;
-  PasswordNeverExpires: string;
-  DormantAccountFlag?: string;
-}
-
-export type KnownBoolean = boolean | null;
-
-export interface RiskEvidence {
-  ruleId: string;
-  sourceField: keyof ADUserRaw;
-  sourceValue: string;
-  description: string;
+  MFAStatus: string; // "True" | "False"
+  PasswordNeverExpires: string; // "True" | "False"
+  DormantAccountFlag?: string; // "True" | "False"
 }
 
 export interface RiskProfile {
@@ -29,18 +20,17 @@ export interface RiskProfile {
   riskLevel: 'Critical' | 'High' | 'Medium' | 'Low';
   issues: string[];
   recommendations: string[];
-  evidence: RiskEvidence[];
 }
 
 export interface ADUserProcessed extends ADUserRaw {
   id: string;
   groups: string[];
-  daysSinceLogin: number | null;
-  isDormant: KnownBoolean;
-  hasMFA: KnownBoolean;
-  passwordExpired: KnownBoolean;
-  passwordNeverExpires: KnownBoolean;
-  isEnabled: KnownBoolean;
+  daysSinceLogin: number;
+  isDormant: boolean;
+  hasMFA: boolean;
+  passwordExpired: boolean;
+  passwordNeverExpires: boolean;
+  isEnabled: boolean;
   risk: RiskProfile;
 }
 
@@ -50,5 +40,5 @@ export interface DashboardMetrics {
   highRiskCount: number;
   avgRiskScore: number;
   dormantCount: number;
-  mfaAdoptionRate: number | null;
+  mfaAdoptionRate: number;
 }
